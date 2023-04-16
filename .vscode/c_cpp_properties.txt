@@ -1,0 +1,3 @@
+PUT IN includePath:
+
+"/Users/brandon/Documents/Arduino/libraries/**",
