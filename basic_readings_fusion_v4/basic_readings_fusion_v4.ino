@@ -51,7 +51,7 @@ float alpha = 0.995;
 long int timer = 0;
 
 void setup(void) {
-  Serial.begin(115200);
+  Serial.begin(9600);
   while (!Serial)
     delay(10); // will pause Zero, Leonardo, etc until serial console opens
 
@@ -155,6 +155,6 @@ Serial.print( degrees(roll));
 
 Serial.println();
 //  Serial.println(millis());
-while((micros()-timer)<10000){ // this delays for the remainder of the time up to 10ms
-  }
+// while((micros()-timer)<10000){ // this delays for the remainder of the time up to 10ms
+  // }
 }
