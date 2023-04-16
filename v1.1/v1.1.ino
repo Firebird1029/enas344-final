@@ -7,6 +7,10 @@
 #include <SerialFlash.h>
 #include <Wire.h>
 
+#define ENCODER_A_PIN 2
+#define ENCODER_B_PIN 3
+#define RIBBON_POT_PIN 14  // A0
+
 #define MOTION_ALPHA 0.5  // 0 = acceleration, 1 = gyro, default: 0.995
 
 #define ACCELX_OFF 0.295
@@ -46,7 +50,7 @@ float base_freq = 220;
 float amp_scale = 0.5;
 
 // ENCODER - PITCH
-Encoder enc(2, 3);
+Encoder enc(ENCODER_A_PIN, ENCODER_B_PIN);
 
 // MPU6050
 Adafruit_MPU6050 mpu;
@@ -73,6 +77,7 @@ float yaw = 0;
 // GLOBAL - GENERAL
 
 long int timer = 0;
+int ribbonPotVal = 0;
 
 void setup(void) {
   // SERIAL SETUP
@@ -166,8 +171,28 @@ void loop() {
   Serial.print(degrees(roll)); */
 
   // Serial.println(enc.read());
-  waveform1.frequency(base_freq + enc.read());
+  // waveform1.frequency(base_freq + enc.read());
 
-  ladder1.frequency(abs(pitch * 1000 + 500));
-  sine2.amplitude(roll / 10);
+  ribbonPotVal = analogRead(RIBBON_POT_PIN);
+  Serial.print(ribbonPotVal);
+  Serial.print("  ");
+  if (ribbonPotVal < 1000) {
+    // ribbonPotVal = map(ribbonPotVal, 0, 1023, 0, 255);
+    ribbonPotVal = map(ribbonPotVal, 400, 740, 0, 12);
+    // ribbonPotVal = map(ribbonPotVal, 0, 1023, 0, 12 * 12);
+    ribbonPotVal = base_freq * pow(2, ribbonPotVal / 12.0);
+    waveform1.frequency(ribbonPotVal);
+    // if (ribbonPotVal >= 0 && ribbonPotVal <= 12) {
+    //   waveform1.amplitude(0);
+    // } else {
+    waveform1.amplitude(1.0);
+    // }
+  } else {
+    waveform1.amplitude(0);
+  }
+
+  ladder1.frequency(100000);
+
+  // ladder1.frequency(abs(pitch * 1000 + 500));
+  // sine2.amplitude(roll / 10);
 }
