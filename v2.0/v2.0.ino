@@ -49,7 +49,8 @@
 #define DELAYLINE_MAX_LEN 441000  // 44100 samples/sec * 10 sec
 
 // AUDIO
-EXTMEM int16_t DELAY_LINE[DELAYLINE_MAX_LEN] = {};
+EXTMEM int16_t DELAY_LINE_TEMP[DELAYLINE_MAX_LEN] = {};
+EXTMEM int16_t DELAY_LINE_FULL[DELAYLINE_MAX_LEN] = {};
 
 // CUSTOM OVERRIDES
 AudioEffectdelayLoop tempDelay;  // xy=607,182
@@ -72,17 +73,18 @@ AudioConnection patchCord1(drum1, 0, tempDelayMixer, 2);
 AudioConnection patchCord2(inWaveformFM, 0, inWaveformMod, 0);
 AudioConnection patchCord3(inWaveformMod, inEnvelope);
 AudioConnection patchCord4(inEnvelope, 0, tempDelayMixer, 1);
-AudioConnection patchCord5(tempDelayMixer, tempDelay);
-AudioConnection patchCord6(tempDelayMixer, 0, outMixer, 0);
+AudioConnection patchCord5(inEnvelope, 0, outMixer, 0);
+AudioConnection patchCord6(tempDelayMixer, tempDelay);
 AudioConnection patchCord7(tempDelayMixer, 0, fullDelayMixer, 1);
 AudioConnection patchCord8(tempDelay, 0, tempDelayMixer, 0);
-AudioConnection patchCord9(outLadderFreqSine, 0, outLadder, 1);
-AudioConnection patchCord10(outMixer, 0, outLadder, 0);
-AudioConnection patchCord11(fullDelayMixer, fullDelay);
-AudioConnection patchCord12(fullDelayMixer, 0, outMixer, 1);
+AudioConnection patchCord9(tempDelay, 0, outMixer, 2);
+AudioConnection patchCord10(outLadderFreqSine, 0, outLadder, 1);
+AudioConnection patchCord11(outMixer, 0, outLadder, 0);
+AudioConnection patchCord12(fullDelayMixer, fullDelay);
 AudioConnection patchCord13(fullDelay, 0, fullDelayMixer, 0);
-AudioConnection patchCord14(outLadder, 0, i2s1, 0);
-AudioConnection patchCord15(outLadder, 0, i2s1, 1);
+AudioConnection patchCord14(fullDelay, 0, outMixer, 1);
+AudioConnection patchCord15(outLadder, 0, i2s1, 0);
+AudioConnection patchCord16(outLadder, 0, i2s1, 1);
 AudioControlSGTL5000 sgtl5000_1;  // xy=64.5,20
 // GUItool: end automatically generated code
 
@@ -122,7 +124,8 @@ float baseFreq = 440.0;
 // GLOBAL - GENERAL
 
 elapsedMillis timer;
-int ribbonPotVal = 0, mappedRibbonPotVal = 0;
+long unsigned int tempRecordingStart;
+int mappedRibbonPotVal = 0;
 bool isRecordingLoop = false;
 
 // curSustainStatus == 0 && ribbon released -> do nothing
@@ -133,10 +136,7 @@ bool curSustainStatus = false;
 
 void setup(void) {
   // SERIAL SETUP
-  Serial.begin(9600);
-  while (!Serial) {
-    delay(10);
-  }
+  Serial.begin(115200);
   Serial.println("Serial started");
 
   // AUDIO SETUP
@@ -154,16 +154,15 @@ void setup(void) {
   inEnvelope.release(300);
 
   tempDelayMixer.gain(0, 0.0);  // feedback
-  tempDelayMixer.gain(1, 1.0);  // ribbon
-  tempDelayMixer.gain(2, 1.0);  // drum
-
-  tempDelay.delay(0, LOOP_TIME);
+  tempDelayMixer.gain(1, 0.0);  // ribbon TODO change to inMixer
+  tempDelayMixer.gain(2, 0.0);  // drum TODO remove
 
   outLadderFreqSine.frequency(10);
   outLadderFreqSine.amplitude(0);
 
-  outMixer.gain(0, 1.0);  // temp delay
+  outMixer.gain(0, 1.0);  // realtime dry input
   outMixer.gain(1, 1.0);  // full delay
+  outMixer.gain(2, 1.0);  // temp delay
 
   fullDelayMixer.gain(0, 0.0);  // feedback
   fullDelayMixer.gain(1, 0.0);  // temp mixer
@@ -171,8 +170,10 @@ void setup(void) {
   fullDelay.delay(0, LOOP_TIME);
 
   // delay lines
-  tempDelay.begin(DELAY_LINE, DELAYLINE_MAX_LEN);
-  fullDelay.begin(DELAY_LINE, DELAYLINE_MAX_LEN);
+  tempDelay.begin(DELAY_LINE_TEMP, DELAYLINE_MAX_LEN);
+  fullDelay.begin(DELAY_LINE_FULL, DELAYLINE_MAX_LEN);
+  tempDelay.delay(0, LOOP_TIME);  // must come after tempDelay.begin!
+  fullDelay.delay(0, LOOP_TIME);  // must come after fullDelay.begin!
 
   outLadder.frequency(100000);
   outLadder.octaveControl(6);
@@ -266,8 +267,35 @@ void loop() {
       inEnvelope.noteOff();
       curSustainStatus = false;
     }
-    inEnvelope.noteOff();  // TODO temp fix, change to Bounce
   }
+
+  // Read button data
+  loopButton.update();
+  synthButton.update();
+
+  // Recording functionality
+  if (loopButton.pressed()) {
+    Serial.println("Loop button pressed");
+    if (!isRecordingLoop) {
+      // send the synth signal into the delay loop
+      tempDelayMixer.gain(1, 1.0);
+      // comment this line if you don't want to clear the loop when you record
+      // new material
+      tempDelayMixer.gain(0, 0.0);
+      tempRecordingStart = timer;
+      isRecordingLoop = true;
+    }
+  }
+
+  if (timer >= (tempRecordingStart + LOOP_TIME) && isRecordingLoop) {
+    Serial.println("Recording stopped");
+    // turn off the signal into the delay loop
+    tempDelayMixer.gain(1, 0.0);
+    // resets the feedback to 1.0 so the loop repeats indefinitely
+    tempDelayMixer.gain(0, 1.0);
+    isRecordingLoop = false;
+  }
+
   delay(10);  // prevents ramp down bug, switch to timer instead of delay later
 }
 
@@ -276,9 +304,6 @@ void loop() {
 /**
  * @brief get the ribbon pot val and map it to a new range if being pressed
  *
- * @param potVal the ribbon pot reading
- * @param min min of input value to map from
- * @param max max of input value to map from
  * @param newMin min of new range, output will never be less than this
  * @param newMax max of new range, output will never be more than this
  * @return (int) -1 if ribbon pot is not pressed, otherwise a value between
