@@ -1,6 +1,7 @@
 {
-	"configuration": "usb=serial,speed=600,opt=o2std,keys=en-us",
-	"board": "teensy:avr:teensy41",
-	"port": "/dev/tty.usbmodem113138701",
-	"sketch": "v1.1/v1.1.ino"
+    "output": "../ArduinoOutput",
+    "configuration": "usb=serial,speed=600,opt=o2std,keys=en-us",
+    "board": "teensy:avr:teensy41",
+    "port": "/dev/tty.usbmodem113138701",
+    "sketch": "v1.1.1/v1.1.1.ino"
 }
