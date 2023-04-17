@@ -16,7 +16,8 @@
 
 #define ENCODER_A_PIN 2
 #define ENCODER_B_PIN 3
-#define RIBBON_POT_PIN 41  // A17
+#define RIBBON_POT_PIN_1 41  // A17
+#define RIBBON_POT_PIN_2 40  // A16
 #define LOOP_BTN_PIN 32
 #define SYNTH_BTN_PIN 31
 
@@ -242,9 +243,7 @@ void loop() {
   // inWaveformMod.frequency(baseFreq + enc.read());
 
   // Read ribbon pot data
-  ribbonPotVal = analogRead(RIBBON_POT_PIN);
-  // Serial.println(ribbonPotVal);
-  mappedRibbonPotVal = getRibbonPotValAndMap(ribbonPotVal, 420, 740, 0, 12);
+  mappedRibbonPotVal = getRibbonPotValAndMap(0, 12);
   // Serial.println(mappedRibbonPotVal);
 
   if (mappedRibbonPotVal > -1) {
@@ -255,6 +254,7 @@ void loop() {
       // sustain note
     } else {
       // note on
+      Serial.println("note on");
       inEnvelope.noteOn();
       curSustainStatus = true;
     }
@@ -262,11 +262,13 @@ void loop() {
     // inWaveformMod.amplitude(0);
     if (curSustainStatus) {
       // note off
+      Serial.println("note off");
       inEnvelope.noteOff();
       curSustainStatus = false;
     }
     inEnvelope.noteOff();  // TODO temp fix, change to Bounce
   }
+  delay(10);  // prevents ramp down bug, switch to timer instead of delay later
 }
 
 // HELPER FUNCTIONS
@@ -282,22 +284,20 @@ void loop() {
  * @return (int) -1 if ribbon pot is not pressed, otherwise a value between
  * newMin and newMax
  */
-int getRibbonPotValAndMap(int potVal, int min, int max, int newMin,
-                          int newMax) {
-  // check if ribbon pot is being pressed, if not return -1
-  if (potVal > 1000 || potVal < 100) {
+int getRibbonPotValAndMap(int newMin, int newMax) {
+  float a1 = analogRead(RIBBON_POT_PIN_1);  // sensorValue2
+  float a2 = analogRead(RIBBON_POT_PIN_2);  // sensorValue1
+
+  if (a1 < 10 || a2 < 10) {
     return -1;
   }
 
-  // clip potVal between min and max
-  if (potVal < min) {
-    potVal = min;
-  } else if (potVal > max) {
-    potVal = max;
-  }
+  // calibrate by measuring actual resistance of 10k resistor (e.g. 9.93 or 9.8)
+  float x = ((1023 / (float)a1) - 1) * (9.93 / 9.39);
+  float y = ((1023 / (float)a2) - 1) * (9.8 / 9.39);
 
-  // finally, map values
-  potVal = map(potVal, min, max, newMin, newMax);
+  float pos = (x + (1 - y)) / 2;  // normalized position (from 0.0 to 1.0)
+  pos = (newMax - newMin) * pos + newMin;  // mapped position
 
-  return potVal;
+  return (int)pos;
 }
