@@ -32,21 +32,23 @@
 // AUDIO
 
 // GUItool: begin automatically generated code
-AudioSynthWaveformSine sine2;  // xy=147,199
-AudioSynthWaveform waveform1;  // xy=159,141
-AudioFilterLadder ladder1;     // xy=477,173
-AudioOutputI2S i2s1;           // xy=764,174
-AudioConnection patchCord1(sine2, 0, ladder1, 1);
-AudioConnection patchCord2(waveform1, 0, ladder1, 0);
-AudioConnection patchCord3(ladder1, 0, i2s1, 0);
-AudioConnection patchCord4(ladder1, 0, i2s1, 1);
-AudioControlSGTL5000 sgtl5000_1;  // xy=154,80
+AudioSynthWaveform waveform1;   // xy=113,188
+AudioSynthWaveformSine sine2;   // xy=144,432
+AudioEffectEnvelope envelope1;  // xy=337,189
+AudioFilterLadder ladder1;      // xy=697,296
+AudioOutputI2S i2s1;            // xy=895,129
+AudioConnection patchCord1(waveform1, envelope1);
+AudioConnection patchCord2(sine2, 0, ladder1, 1);
+AudioConnection patchCord3(envelope1, 0, ladder1, 0);
+AudioConnection patchCord4(ladder1, 0, i2s1, 0);
+AudioConnection patchCord5(ladder1, 0, i2s1, 1);
+AudioControlSGTL5000 sgtl5000_1;  // xy=77,67
 // GUItool: end automatically generated code
 
 // AUDIO - GLOBAL VARS
 
-float base_freq = 440;
-float amp_scale = 0.5;
+float baseFreq = 440.0;
+float ampScale = 0.5;
 
 // ENCODER - PITCH
 Encoder enc(ENCODER_A_PIN, ENCODER_B_PIN);
@@ -58,16 +60,16 @@ Adafruit_MPU6050 mpu;
 
 float accelx, accely, accelz, gyrox, gyroy, gyroz = 0;
 
-float accel_pitch;  // about y
-float accel_roll;   // about x
+float accelPitch;  // about y
+float accelRoll;   // about x
 
-float gyro_pitch = 0;  // about y
-float gyro_roll = 0;   // about x
-float gyro_yaw = 0;    // about z
+float gyroPitch = 0;  // about y
+float gyroRoll = 0;   // about x
+float gyroYaw = 0;    // about z
 
-float pitch_dot = 0;
-float roll_dot = 0;
-float yaw_dot = 0;
+float pitchDot = 0;
+float rollDot = 0;
+float yawDot = 0;
 
 float pitch = 0;
 float roll = 0;
@@ -77,6 +79,12 @@ float yaw = 0;
 
 long int timer = 0;
 int ribbonPotVal = 0, mappedRibbonPotVal = 0;
+
+// curSustainStatus == 0 && ribbon released -> do nothing
+// curSustainStatus == 0 && ribbon pressed -> note on, set status := 1
+// curSustainStatus == 1 && ribbon pressed -> sustain note
+// curSustainStatus == 1 && ribbon released -> note off, set status := 0
+bool curSustainStatus = false;
 
 void setup(void) {
   // SERIAL SETUP
@@ -91,7 +99,8 @@ void setup(void) {
   sgtl5000_1.enable();
   sgtl5000_1.volume(0.5);
 
-  waveform1.begin(amp_scale, base_freq, WAVEFORM_SAWTOOTH);
+  waveform1.begin(ampScale, baseFreq, WAVEFORM_SAWTOOTH);
+  waveform1.amplitude(1.0);
   sine2.frequency(10);
   sine2.amplitude(0);
   ladder1.frequency(5000);
@@ -111,10 +120,11 @@ void setup(void) {
   mpu.setGyroRange(MPU6050_RANGE_500_DEG);
   mpu.setFilterBandwidth(MPU6050_BAND_184_HZ);
 
-  delay(100);
-
   // TODO make dynamic
   ladder1.frequency(100000);
+
+  Serial.println("Finished setup.");
+  delay(100);
 }
 
 void loop() {
@@ -132,39 +142,53 @@ void loop() {
   gyroy = (g.gyro.z - GYROZ_OFF);
   gyroz = (g.gyro.x - GYROX_OFF);
 
-  pitch_dot = gyroy * cos(roll) - gyroz * sin(roll);
-  yaw_dot = (gyroy * sin(roll) + gyroz * cos(roll)) / cos(pitch);
-  roll_dot = gyrox + sin(pitch) * yaw_dot;
+  pitchDot = gyroy * cos(roll) - gyroz * sin(roll);
+  yawDot = (gyroy * sin(roll) + gyroz * cos(roll)) / cos(pitch);
+  rollDot = gyrox + sin(pitch) * yawDot;
 
-  // gyro_pitch = gyro_pitch + gyroy * 0.01;
-  // gyro_roll =  gyro_roll + gyrox * 0.01;
-  // gyro_yaw =  gyro_yaw + gyroz * 0.01;
+  // gyroPitch = gyroPitch + gyroy * 0.01;
+  // gyroRoll =  gyroRoll + gyrox * 0.01;
+  // gyroYaw =  gyroYaw + gyroz * 0.01;
 
-  accel_pitch = atan2(-accelx, sqrt(accely * accely + accelz * accelz));
-  accel_roll = atan2(accely, accelz);
+  accelPitch = atan2(-accelx, sqrt(accely * accely + accelz * accelz));
+  accelRoll = atan2(accely, accelz);
 
-  pitch = MOTION_ALPHA * (pitch + pitch_dot * 0.01) +
-          (1 - MOTION_ALPHA) * accel_pitch;  // final pitch value
-  roll = MOTION_ALPHA * (roll + roll_dot * 0.01) +
-         (1 - MOTION_ALPHA) * accel_roll;  // final roll value
+  pitch = MOTION_ALPHA * (pitch + pitchDot * 0.01) +
+          (1 - MOTION_ALPHA) * accelPitch;  // final pitch value
+  roll = MOTION_ALPHA * (roll + rollDot * 0.01) +
+         (1 - MOTION_ALPHA) * accelRoll;  // final roll value
 
   // ladder1.frequency(abs(pitch * 1000 + 500));
   // sine2.amplitude(roll / 10);
 
   // Read encoder data
   // Serial.println(enc.read());
-  // waveform1.frequency(base_freq + enc.read());
+  // waveform1.frequency(baseFreq + enc.read());
 
   // Read ribbon pot data
   ribbonPotVal = analogRead(RIBBON_POT_PIN);
   // Serial.println(ribbonPotVal);
   mappedRibbonPotVal = getRibbonPotValAndMap(ribbonPotVal, 420, 740, 0, 12);
+  // Serial.println(mappedRibbonPotVal);
 
   if (mappedRibbonPotVal > -1) {
-    waveform1.frequency(base_freq * pow(2, ribbonPotVal / 12.0));
-    waveform1.amplitude(1.0);
+    // ribbon pressed
+    waveform1.frequency(baseFreq * pow(2, mappedRibbonPotVal / 12.0));
+
+    if (curSustainStatus) {
+      // sustain note
+    } else {
+      // note on
+      envelope1.noteOn();
+      curSustainStatus = true;
+    }
   } else {
-    waveform1.amplitude(0);
+    // waveform1.amplitude(0);
+    if (curSustainStatus) {
+      // note off
+      envelope1.noteOff();
+      curSustainStatus = false;
+    }
   }
 }
 
