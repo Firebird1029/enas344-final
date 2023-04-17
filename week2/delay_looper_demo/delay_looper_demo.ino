@@ -6,13 +6,13 @@
 
 
 // GUItool: begin automatically generated code
-AudioSynthWaveform       waveform1;      //xy=71,143
-AudioEffectEnvelope      envelope1;      //xy=209,144
-AudioMixer4              mixer1;         //xy=333,237
-//AudioEffectDelay         delay1;         //xy=499,240
+AudioSynthWaveform       waveform1;      //xy=150,185
+AudioEffectEnvelope      envelope1;      //xy=288,186
+AudioMixer4              mixer1;         //xy=422,291
+// AudioEffectDelay         delay1;         //xy=604,588
 AudioEffectdelayLoop    delay1;          //xy=499,240
-AudioMixer4              mixer2;         //xy=718,181
-AudioOutputI2S           i2s1;           //xy=932,173
+AudioMixer4              mixer2;         //xy=797,223
+AudioOutputI2S           i2s1;           //xy=1011,215
 AudioConnection          patchCord1(waveform1, envelope1);
 AudioConnection          patchCord2(envelope1, 0, mixer1, 0);
 AudioConnection          patchCord3(envelope1, 0, mixer2, 0);
@@ -21,7 +21,7 @@ AudioConnection          patchCord5(delay1, 0, mixer2, 1);
 AudioConnection          patchCord6(delay1, 0, mixer1, 1);
 AudioConnection          patchCord7(mixer2, 0, i2s1, 0);
 AudioConnection          patchCord8(mixer2, 0, i2s1, 1);
-AudioControlSGTL5000     sgtl5000_1;     //xy=712,359
+AudioControlSGTL5000     sgtl5000_1;     //xy=137,104
 // GUItool: end automatically generated code
 
 
