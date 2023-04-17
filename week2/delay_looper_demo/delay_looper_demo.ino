@@ -37,6 +37,8 @@ elapsedMillis timer;
 #define DELAYLINE_MAX_LEN 441000  
 EXTMEM int16_t delay_line[DELAYLINE_MAX_LEN] = {};
 
+#define LOOP_TIME 2000
+
 bool recording = false;
 
 void setup() {
@@ -74,7 +76,7 @@ void setup() {
   envelope1.sustain(0.0);
   envelope1.release(0);
 
-  delay1.delay(0, 2000);  // fixed, 2-second loop duration.  This can also be changed dynamically in your program up to the limit set by the DELAYLINE_MAX_LEN value
+  delay1.delay(0, LOOP_TIME);  // fixed, 2-second loop duration.  This can also be changed dynamically in your program up to the limit set by the DELAYLINE_MAX_LEN value
 
 }
 
@@ -105,7 +107,7 @@ void loop() {
     }
   }
 
-  if(timer>=2000 && recording) {
+  if(timer>=LOOP_TIME && recording) {
     // turn off the signal into the delay loop
      mixer1.gain(0, 0.0);  
      // resets the feedback to 1.0 so the loop repeats indefinitely
@@ -116,7 +118,7 @@ void loop() {
   }
 
   if ( Synth_button.pressed()) {
-    //  && timer < 2000 
+    //  && timer < LOOP_TIME 
     Serial.println("Synth button Pressed");
     //set synth to random freq and trigger envelope
     waveform1.frequency(random(100, 500));
