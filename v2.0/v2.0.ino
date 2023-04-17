@@ -9,6 +9,8 @@
 #include <Wire.h>
 
 #include "effect_delayLoop.h"
+// TODO fix VS code errors
+// #include "mixer.h"
 
 // PINOUT
 
@@ -40,25 +42,47 @@
 
 // AUDIO & GENERAL
 
-#define DELAYLINE_MAX_LEN 441000  // 44100 samples/sec * 10 sec
-
 #define LOOP_TIME 2000
+#define MASTER_VOLUME 0.5
+
+#define DELAYLINE_MAX_LEN 441000  // 44100 samples/sec * 10 sec
 
 // AUDIO
 EXTMEM int16_t DELAY_LINE[DELAYLINE_MAX_LEN] = {};
 
+// CUSTOM OVERRIDES
+AudioEffectdelayLoop tempDelay;  // xy=607,182
+AudioEffectdelayLoop fullDelay;  // xy=868,201
+
 // GUItool: begin automatically generated code
-AudioSynthWaveform waveform1;   // xy=113,188
-AudioSynthWaveformSine sine2;   // xy=144,432
-AudioEffectEnvelope envelope1;  // xy=337,189
-AudioFilterLadder ladder1;      // xy=697,296
-AudioOutputI2S i2s1;            // xy=895,129
-AudioConnection patchCord1(waveform1, envelope1);
-AudioConnection patchCord2(sine2, 0, ladder1, 1);
-AudioConnection patchCord3(envelope1, 0, ladder1, 0);
-AudioConnection patchCord4(ladder1, 0, i2s1, 0);
-AudioConnection patchCord5(ladder1, 0, i2s1, 1);
-AudioControlSGTL5000 sgtl5000_1;  // xy=77,67
+AudioSynthSimpleDrum drum1;                 // xy=55,176
+AudioSynthWaveform inWaveformFM;            // xy=77,58
+AudioSynthWaveformModulated inWaveformMod;  // xy=120,103
+AudioEffectEnvelope inEnvelope;             // xy=282,102
+AudioMixer4 tempDelayMixer;                 // xy=457,302
+// AudioEffectDelay tempDelay;                 // xy=607,182
+AudioSynthWaveformSine outLadderFreqSine;  // xy=681,89
+AudioMixer4 outMixer;                      // xy=712,35
+AudioMixer4 fullDelayMixer;                // xy=735,410
+// AudioEffectDelay fullDelay;                 // xy=868,201
+AudioFilterLadder outLadder;  // xy=880,30
+AudioOutputI2S i2s1;          // xy=1071,29
+AudioConnection patchCord1(drum1, 0, tempDelayMixer, 2);
+AudioConnection patchCord2(inWaveformFM, 0, inWaveformMod, 0);
+AudioConnection patchCord3(inWaveformMod, inEnvelope);
+AudioConnection patchCord4(inEnvelope, 0, tempDelayMixer, 1);
+AudioConnection patchCord5(tempDelayMixer, tempDelay);
+AudioConnection patchCord6(tempDelayMixer, 0, outMixer, 0);
+AudioConnection patchCord7(tempDelayMixer, 0, fullDelayMixer, 1);
+AudioConnection patchCord8(tempDelay, 0, tempDelayMixer, 0);
+AudioConnection patchCord9(outLadderFreqSine, 0, outLadder, 1);
+AudioConnection patchCord10(outMixer, 0, outLadder, 0);
+AudioConnection patchCord11(fullDelayMixer, fullDelay);
+AudioConnection patchCord12(fullDelayMixer, 0, outMixer, 1);
+AudioConnection patchCord13(fullDelay, 0, fullDelayMixer, 0);
+AudioConnection patchCord14(outLadder, 0, i2s1, 0);
+AudioConnection patchCord15(outLadder, 0, i2s1, 1);
+AudioControlSGTL5000 sgtl5000_1;  // xy=64.5,20
 // GUItool: end automatically generated code
 
 // ENCODER
@@ -93,7 +117,6 @@ float yaw = 0;
 // GLOBAL - AUDIO
 
 float baseFreq = 440.0;
-float ampScale = 0.5;
 
 // GLOBAL - GENERAL
 
@@ -118,14 +141,40 @@ void setup(void) {
   // AUDIO SETUP
   AudioMemory(20);
   sgtl5000_1.enable();
-  sgtl5000_1.volume(0.5);
+  sgtl5000_1.volume(MASTER_VOLUME);
 
-  waveform1.begin(ampScale, baseFreq, WAVEFORM_SAWTOOTH);
-  waveform1.amplitude(1.0);
-  sine2.frequency(10);
-  sine2.amplitude(0);
-  ladder1.frequency(5000);
-  ladder1.octaveControl(10.0);
+  inWaveformFM.begin(0, baseFreq, WAVEFORM_SINE);
+  inWaveformMod.begin(1.0, baseFreq, WAVEFORM_SAWTOOTH);
+  inWaveformMod.frequencyModulation(1);
+  inEnvelope.attack(10.5);
+  inEnvelope.hold(2.5);
+  inEnvelope.decay(35);
+  inEnvelope.sustain(0.8);
+  inEnvelope.release(300);
+
+  tempDelayMixer.gain(0, 0.0);  // feedback
+  tempDelayMixer.gain(1, 1.0);  // ribbon
+  tempDelayMixer.gain(2, 1.0);  // drum
+
+  tempDelay.delay(0, LOOP_TIME);
+
+  outLadderFreqSine.frequency(10);
+  outLadderFreqSine.amplitude(0);
+
+  outMixer.gain(0, 1.0);  // temp delay
+  outMixer.gain(1, 1.0);  // full delay
+
+  fullDelayMixer.gain(0, 0.0);  // feedback
+  fullDelayMixer.gain(1, 0.0);  // temp mixer
+
+  fullDelay.delay(0, LOOP_TIME);
+
+  // delay lines
+  tempDelay.begin(DELAY_LINE, DELAYLINE_MAX_LEN);
+  fullDelay.begin(DELAY_LINE, DELAYLINE_MAX_LEN);
+
+  outLadder.frequency(100000);
+  outLadder.octaveControl(6);
 
   // BUTTON SETUP
   loopButton.attach(LOOP_BTN_PIN, INPUT_PULLUP);
@@ -150,9 +199,6 @@ void setup(void) {
   mpu.setAccelerometerRange(MPU6050_RANGE_2_G);
   mpu.setGyroRange(MPU6050_RANGE_500_DEG);
   mpu.setFilterBandwidth(MPU6050_BAND_184_HZ); */
-
-  // TODO make dynamic
-  ladder1.frequency(100000);
 
   Serial.println("Finished setup.");
   delay(100);
@@ -189,11 +235,11 @@ void loop() {
          (1 - MOTION_ALPHA) * accelRoll;  // final roll value
 
   // ladder1.frequency(abs(pitch * 1000 + 500));
-  // sine2.amplitude(roll / 10); */
+  // outLadderFreqSine.amplitude(roll / 10); */
 
   // Read encoder data
   // Serial.println(enc.read());
-  // waveform1.frequency(baseFreq + enc.read());
+  // inWaveformMod.frequency(baseFreq + enc.read());
 
   // Read ribbon pot data
   ribbonPotVal = analogRead(RIBBON_POT_PIN);
@@ -203,23 +249,23 @@ void loop() {
 
   if (mappedRibbonPotVal > -1) {
     // ribbon pressed
-    waveform1.frequency(baseFreq * pow(2, mappedRibbonPotVal / 12.0));
+    inWaveformMod.frequency(baseFreq * pow(2, mappedRibbonPotVal / 12.0));
 
     if (curSustainStatus) {
       // sustain note
     } else {
       // note on
-      envelope1.noteOn();
+      inEnvelope.noteOn();
       curSustainStatus = true;
     }
   } else {
-    // waveform1.amplitude(0);
+    // inWaveformMod.amplitude(0);
     if (curSustainStatus) {
       // note off
-      envelope1.noteOff();
+      inEnvelope.noteOff();
       curSustainStatus = false;
     }
-    envelope1.noteOff();  // TODO temp fix, change to Bounce
+    inEnvelope.noteOff();  // TODO temp fix, change to Bounce
   }
 }
 
