@@ -1,15 +1,24 @@
 #include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
 #include <Audio.h>
+#include <Bounce2.h>
 #include <Encoder.h>
 #include <SD.h>
 #include <SPI.h>
 #include <SerialFlash.h>
 #include <Wire.h>
 
+#include "effect_delayLoop.h"
+
+// PINOUT
+
 #define ENCODER_A_PIN 2
 #define ENCODER_B_PIN 3
 #define RIBBON_POT_PIN 41  // A17
+#define LOOP_BTN_PIN 32
+#define SYNTH_BTN_PIN 31
+
+// MOTION
 
 #define MOTION_ALPHA 0.5  // 0 = acceleration, 1 = gyro, default: 0.995
 
@@ -29,7 +38,14 @@
 #define GYROY_SCALE 1
 #define GYROZ_SCALE 1
 
+// AUDIO & GENERAL
+
+#define DELAYLINE_MAX_LEN 441000  // 44100 samples/sec * 10 sec
+
+#define LOOP_TIME 2000
+
 // AUDIO
+EXTMEM int16_t DELAY_LINE[DELAYLINE_MAX_LEN] = {};
 
 // GUItool: begin automatically generated code
 AudioSynthWaveform waveform1;   // xy=113,188
@@ -45,13 +61,12 @@ AudioConnection patchCord5(ladder1, 0, i2s1, 1);
 AudioControlSGTL5000 sgtl5000_1;  // xy=77,67
 // GUItool: end automatically generated code
 
-// AUDIO - GLOBAL VARS
-
-float baseFreq = 440.0;
-float ampScale = 0.5;
-
-// ENCODER - PITCH
+// ENCODER
 Encoder enc(ENCODER_A_PIN, ENCODER_B_PIN);
+
+// BUTTONS
+Button loopButton = Button();
+Button synthButton = Button();
 
 // MPU6050
 Adafruit_MPU6050 mpu;
@@ -75,10 +90,16 @@ float pitch = 0;
 float roll = 0;
 float yaw = 0;
 
+// GLOBAL - AUDIO
+
+float baseFreq = 440.0;
+float ampScale = 0.5;
+
 // GLOBAL - GENERAL
 
-long int timer = 0;
+elapsedMillis timer;
 int ribbonPotVal = 0, mappedRibbonPotVal = 0;
+bool isRecordingLoop = false;
 
 // curSustainStatus == 0 && ribbon released -> do nothing
 // curSustainStatus == 0 && ribbon pressed -> note on, set status := 1
@@ -106,7 +127,17 @@ void setup(void) {
   ladder1.frequency(5000);
   ladder1.octaveControl(10.0);
 
+  // BUTTON SETUP
+  loopButton.attach(LOOP_BTN_PIN, INPUT_PULLUP);
+  loopButton.interval(5);
+  loopButton.setPressedState(LOW);
+
+  synthButton.attach(SYNTH_BTN_PIN, INPUT_PULLUP);
+  synthButton.interval(5);
+  synthButton.setPressedState(LOW);
+
   // MOTION SETUP
+  // TODO
   /* Serial.println("Initializing MPU6050...");
   if (!mpu.begin()) {
     Serial.println("ERROR: Failed to find MPU6050 chip!");
@@ -128,9 +159,8 @@ void setup(void) {
 }
 
 void loop() {
-  timer = micros();
-
   // Read motion data
+  // TODO
   /* sensors_event_t a, g, temp;
   mpu.getEvent(&a, &g, &temp);
 
@@ -189,6 +219,7 @@ void loop() {
       envelope1.noteOff();
       curSustainStatus = false;
     }
+    envelope1.noteOff();  // TODO temp fix, change to Bounce
   }
 }
 
