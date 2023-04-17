@@ -45,7 +45,7 @@ AudioControlSGTL5000 sgtl5000_1;  // xy=154,80
 
 // AUDIO - GLOBAL VARS
 
-float base_freq = 220;
+float base_freq = 440;
 float amp_scale = 0.5;
 
 // ENCODER - PITCH
@@ -76,7 +76,7 @@ float yaw = 0;
 // GLOBAL - GENERAL
 
 long int timer = 0;
-int ribbonPotVal = 0;
+int ribbonPotVal = 0, mappedRibbonPotVal = 0;
 
 void setup(void) {
   // SERIAL SETUP
@@ -111,24 +111,10 @@ void setup(void) {
   mpu.setGyroRange(MPU6050_RANGE_500_DEG);
   mpu.setFilterBandwidth(MPU6050_BAND_184_HZ);
 
-  // Get default MPU values
   delay(100);
-  // sensors_event_t a, g, temp;
-  // mpu.getEvent(&a, &g, &temp);
 
-  // accelx = -(a.acceleration.y - ACCELY_OFF) / ACCELY_SCALE;
-  // accely = -(a.acceleration.z - ACCELZ_OFF) / ACCELZ_SCALE;
-  // accelz = -(a.acceleration.x - ACCELX_OFF) / ACCELX_SCALE;
-
-  // gyrox = (g.gyro.y - GYROY_OFF);
-  // gyroy = (g.gyro.z - GYROZ_OFF);
-  // gyroz = (g.gyro.x - GYROX_OFF);
-
-  // accel_pitch = atan2(-accelx, sqrt(accely * accely + accelz * accelz));
-  // accel_roll = atan2(accely, accelz);
-
-  // pitch = accel_pitch;
-  // roll = accel_roll;
+  // TODO make dynamic
+  ladder1.frequency(100000);
 }
 
 void loop() {
@@ -162,30 +148,55 @@ void loop() {
   roll = MOTION_ALPHA * (roll + roll_dot * 0.01) +
          (1 - MOTION_ALPHA) * accel_roll;  // final roll value
 
-  /* //Serial.print("pitch  ");
-  Serial.print(degrees(pitch));
-  //Serial.print("  roll  ");
-  Serial.print(degrees(roll)); */
+  // ladder1.frequency(abs(pitch * 1000 + 500));
+  // sine2.amplitude(roll / 10);
 
+  // Read encoder data
   // Serial.println(enc.read());
   // waveform1.frequency(base_freq + enc.read());
 
+  // Read ribbon pot data
   ribbonPotVal = analogRead(RIBBON_POT_PIN);
   // Serial.println(ribbonPotVal);
-  if (ribbonPotVal < 1000 && ribbonPotVal > 100) {
-    // ribbonPotVal = map(ribbonPotVal, 0, 1023, 0, 255);
-    ribbonPotVal = map(ribbonPotVal, 420, 740, 0, 12);
-    // ribbonPotVal = map(ribbonPotVal, 0, 1023, 0, 12 * 12);
-    ribbonPotVal = base_freq * pow(2, ribbonPotVal / 12.0);
-    waveform1.frequency(ribbonPotVal);
-    Serial.println(ribbonPotVal);
+  mappedRibbonPotVal = getRibbonPotValAndMap(ribbonPotVal, 420, 740, 0, 12);
+
+  if (mappedRibbonPotVal > -1) {
+    waveform1.frequency(base_freq * pow(2, ribbonPotVal / 12.0));
     waveform1.amplitude(1.0);
   } else {
     waveform1.amplitude(0);
   }
+}
 
-  ladder1.frequency(100000);
+// HELPER FUNCTIONS
 
-  // ladder1.frequency(abs(pitch * 1000 + 500));
-  // sine2.amplitude(roll / 10);
+/**
+ * @brief get the ribbon pot val and map it to a new range if being pressed
+ *
+ * @param potVal the ribbon pot reading
+ * @param min min of input value to map from
+ * @param max max of input value to map from
+ * @param newMin min of new range, output will never be less than this
+ * @param newMax max of new range, output will never be more than this
+ * @return (int) -1 if ribbon pot is not pressed, otherwise a value between
+ * newMin and newMax
+ */
+int getRibbonPotValAndMap(int potVal, int min, int max, int newMin,
+                          int newMax) {
+  // check if ribbon pot is being pressed, if not return -1
+  if (potVal > 1000 || potVal < 100) {
+    return -1;
+  }
+
+  // clip potVal between min and max
+  if (potVal < min) {
+    potVal = min;
+  } else if (potVal > max) {
+    potVal = max;
+  }
+
+  // finally, map values
+  potVal = map(potVal, min, max, newMin, newMax);
+
+  return potVal;
 }
