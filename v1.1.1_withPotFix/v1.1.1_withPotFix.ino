@@ -181,7 +181,7 @@ void loop() {
   // Serial.println(baseFreq * pow(2, mappedRibbonPotVal / 12.0));
 
   mappedRibbonPotVal = getRibbonPotValAndMap2(0, 12);
-  Serial.println(mappedRibbonPotVal);
+  // Serial.println(mappedRibbonPotVal);
 
   if (mappedRibbonPotVal > -1) {
     waveform1.frequency(baseFreq * pow(2, mappedRibbonPotVal / 12.0));
@@ -194,7 +194,7 @@ void loop() {
       envelope1.noteOn();
       curSustainStatus = true;
       // waveform1.frequency(baseFreq * pow(2, mappedRibbonPotVal / 12.0));
-      Serial.println(mappedRibbonPotVal);
+      // Serial.println(mappedRibbonPotVal);
     }
 
   } else {
@@ -244,20 +244,20 @@ int getRibbonPotValAndMap(int potVal, int min, int max, int newMin,
 }
 
 int getRibbonPotValAndMap2(int newMin, int newMax) {
-  float pos;
+  float a0 = analogRead(41);  // sensorValue2
+  float a1 = analogRead(40);  // sensorValue1
 
-  float sensorValue1 = analogRead(40);
-  float sensorValue2 = analogRead(41);
-
-  if (sensorValue1 < 10 || sensorValue2 < 10) {
-    pos = -1;
-
-  } else {
-    float Rx = (9.8 / 9.39) * (1023 - sensorValue1) / sensorValue1;
-    float Ry = (9.93 / 9.39) * (1023 - sensorValue2) / sensorValue2;
-
-    pos = (Rx - Ry + 1) / 2;  // normalized position (from 0.0 to 1.0)
-    pos = (newMax - newMin) * pos + newMin;
+  if (a0 < 10 || a1 < 10) {
+    return -1;
   }
-  return pos;
+
+  // float Rx = (9.8 / 9.39) * (1023 - sensorValue1) / sensorValue1;
+  float x = ((1023 / (float)a0) - 1) * (9.93 / 9.39);
+  // float Ry = (9.93 / 9.39) * (1023 - sensorValue2) / sensorValue2;
+  float y = ((1023 / (float)a1) - 1) * (9.8 / 9.39);
+
+  float pos = (x + (1 - y)) / 2;  // normalized position (from 0.0 to 1.0)
+  pos = (newMax - newMin) * pos + newMin;  // mapped position
+
+  return (int)pos;
 }
