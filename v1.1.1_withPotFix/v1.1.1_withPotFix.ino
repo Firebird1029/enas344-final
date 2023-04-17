@@ -127,7 +127,7 @@ void setup(void) {
   mpu.setFilterBandwidth(MPU6050_BAND_184_HZ); */
 
   // TODO make dynamic
- // ladder1.frequency(10000);
+  // ladder1.frequency(10000);
 
   Serial.println("Finished setup.");
   delay(100);
@@ -184,19 +184,18 @@ void loop() {
   Serial.println(mappedRibbonPotVal);
 
   if (mappedRibbonPotVal > -1) {
+    waveform1.frequency(baseFreq * pow(2, mappedRibbonPotVal / 12.0));
+    Serial.println(baseFreq * pow(2, mappedRibbonPotVal / 12.0));
 
-      waveform1.frequency(baseFreq * pow(2, mappedRibbonPotVal / 12.0));
-      Serial.println(baseFreq * pow(2, mappedRibbonPotVal / 12.0));
-  
-      if (curSustainStatus) {
-        // sustain note
-      } else {
-        // note on
-        envelope1.noteOn();
-        curSustainStatus = true;
-        // waveform1.frequency(baseFreq * pow(2, mappedRibbonPotVal / 12.0));
-        Serial.println(mappedRibbonPotVal);
-      }
+    if (curSustainStatus) {
+      // sustain note
+    } else {
+      // note on
+      envelope1.noteOn();
+      curSustainStatus = true;
+      // waveform1.frequency(baseFreq * pow(2, mappedRibbonPotVal / 12.0));
+      Serial.println(mappedRibbonPotVal);
+    }
 
   } else {
     // waveform1.amplitude(0);
@@ -208,8 +207,7 @@ void loop() {
     }
   }
 
-   delay(20);
-
+  delay(20);
 }
 
 // HELPER FUNCTIONS
@@ -251,16 +249,15 @@ int getRibbonPotValAndMap2(int newMin, int newMax) {
   float sensorValue1 = analogRead(40);
   float sensorValue2 = analogRead(41);
 
-if (sensorValue1 <10 || sensorValue2 <10){
-pos = -1;
-  
-}else{
-float Rx = (9.8/9.39)*(1023-sensorValue1)/sensorValue1;
-float Ry = (9.93/9.39)*(1023-sensorValue2)/sensorValue2;
+  if (sensorValue1 < 10 || sensorValue2 < 10) {
+    pos = -1;
 
-pos = (Rx - Ry +1)/2;  // normalized position (from 0.0 to 1.0)
-pos = (newMax-newMin) * pos + newMin;
+  } else {
+    float Rx = (9.8 / 9.39) * (1023 - sensorValue1) / sensorValue1;
+    float Ry = (9.93 / 9.39) * (1023 - sensorValue2) / sensorValue2;
 
-}
+    pos = (Rx - Ry + 1) / 2;  // normalized position (from 0.0 to 1.0)
+    pos = (newMax - newMin) * pos + newMin;
+  }
   return pos;
 }
