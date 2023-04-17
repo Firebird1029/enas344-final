@@ -32,16 +32,15 @@
 // AUDIO
 
 // GUItool: begin automatically generated code
-AudioSynthWaveformSine sine1;  // xy=250,275
-AudioSynthWaveformSine sine2;  // xy=254,499
-AudioSynthWaveform waveform1;  // xy=264,435
-AudioFilterLadder ladder1;     // xy=487,434
-AudioOutputI2S i2s1;           // xy=693,299
+AudioSynthWaveformSine sine2;  // xy=147,199
+AudioSynthWaveform waveform1;  // xy=159,141
+AudioFilterLadder ladder1;     // xy=477,173
+AudioOutputI2S i2s1;           // xy=764,174
 AudioConnection patchCord1(sine2, 0, ladder1, 1);
 AudioConnection patchCord2(waveform1, 0, ladder1, 0);
 AudioConnection patchCord3(ladder1, 0, i2s1, 0);
 AudioConnection patchCord4(ladder1, 0, i2s1, 1);
-AudioControlSGTL5000 sgtl5000_1;  // xy=126,64
+AudioControlSGTL5000 sgtl5000_1;  // xy=154,80
 // GUItool: end automatically generated code
 
 // AUDIO - GLOBAL VARS
@@ -92,8 +91,6 @@ void setup(void) {
   sgtl5000_1.enable();
   sgtl5000_1.volume(0.5);
 
-  // sine1.frequency(base_freq);
-  // sine1.amplitude(amp_scale);
   waveform1.begin(amp_scale, base_freq, WAVEFORM_SAWTOOTH);
   sine2.frequency(10);
   sine2.amplitude(0);
@@ -174,19 +171,15 @@ void loop() {
   // waveform1.frequency(base_freq + enc.read());
 
   ribbonPotVal = analogRead(RIBBON_POT_PIN);
-  Serial.print(ribbonPotVal);
-  Serial.print("  ");
-  if (ribbonPotVal < 1000) {
+  // Serial.println(ribbonPotVal);
+  if (ribbonPotVal < 1000 && ribbonPotVal > 100) {
     // ribbonPotVal = map(ribbonPotVal, 0, 1023, 0, 255);
-    ribbonPotVal = map(ribbonPotVal, 400, 740, 0, 12);
+    ribbonPotVal = map(ribbonPotVal, 420, 740, 0, 12);
     // ribbonPotVal = map(ribbonPotVal, 0, 1023, 0, 12 * 12);
     ribbonPotVal = base_freq * pow(2, ribbonPotVal / 12.0);
     waveform1.frequency(ribbonPotVal);
-    // if (ribbonPotVal >= 0 && ribbonPotVal <= 12) {
-    //   waveform1.amplitude(0);
-    // } else {
+    Serial.println(ribbonPotVal);
     waveform1.amplitude(1.0);
-    // }
   } else {
     waveform1.amplitude(0);
   }
