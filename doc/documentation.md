@@ -1,5 +1,15 @@
 # Documentation
 
+## Code Versions
+
+1. v1.0 -- Encoder, MPU6050 -- The encoder sets the pitch (continuous), and the motion sensor sets the ladder filter cutoff and oscillation depth.
+2. v1.1 -- Ribbon pot -- The ribbon softpot sets the pitch (chromatic thru one octave) when touched.
+   1. v1.1.1 -- Ribbon pot -- Added envelope to allow note on and off when touched and released. Does not work (see Issues).
+   2. v1.1.2 -- Ribbon pot -- updated pinout to Teensy 4.1, commented out MPU, updated getRibbonPotValAndMap to use new softpot circuitry, added delay for ramp up bug. Does not work (see Issues).
+   3. v1.1.3 -- Ribbon pot -- Tried to store stable values of pitch to combat ramp down bug. Does not work (see Issues).
+3. v1.2 -- Ribbon pot -- Working code (doesn't use faulty map function, manually maps from two analog values).
+4. v2.0 -- Ribbon pot, buttons -- With simple delay line.
+
 ## Week 1
 
 Encoder sensor
