@@ -124,9 +124,9 @@ float baseFreq = 440.0;
 // GLOBAL - GENERAL
 
 elapsedMillis timer;
-long unsigned int tempRecordingStart;
+long unsigned int tempRecordingStart = 0, commitRecordingStart = 0;
 int mappedRibbonPotVal = 0;
-bool isRecordingLoop = false;
+bool isRecordingLoop = false, isCommittingLoop = false;
 
 // curSustainStatus == 0 && ribbon released -> do nothing
 // curSustainStatus == 0 && ribbon pressed -> note on, set status := 1
@@ -164,10 +164,8 @@ void setup(void) {
   outMixer.gain(1, 1.0);  // full delay
   outMixer.gain(2, 1.0);  // temp delay
 
-  fullDelayMixer.gain(0, 0.0);  // feedback
+  fullDelayMixer.gain(0, 1.0);  // feedback
   fullDelayMixer.gain(1, 0.0);  // temp mixer
-
-  fullDelay.delay(0, LOOP_TIME);
 
   // delay lines
   tempDelay.begin(DELAY_LINE_TEMP, DELAYLINE_MAX_LEN);
@@ -274,17 +272,15 @@ void loop() {
   synthButton.update();
 
   // Recording functionality
-  if (loopButton.pressed()) {
+  if (loopButton.pressed() && !isRecordingLoop) {
     Serial.println("Loop button pressed");
-    if (!isRecordingLoop) {
-      // send the synth signal into the delay loop
-      tempDelayMixer.gain(1, 1.0);
-      // comment this line if you don't want to clear the loop when you record
-      // new material
-      tempDelayMixer.gain(0, 0.0);
-      tempRecordingStart = timer;
-      isRecordingLoop = true;
-    }
+    // send the synth signal into the delay loop
+    tempDelayMixer.gain(1, 1.0);
+    // comment this line if you don't want to clear the loop when you record
+    // new material
+    tempDelayMixer.gain(0, 0.0);
+    tempRecordingStart = timer;
+    isRecordingLoop = true;
   }
 
   if (timer >= (tempRecordingStart + LOOP_TIME) && isRecordingLoop) {
@@ -294,6 +290,25 @@ void loop() {
     // resets the feedback to 1.0 so the loop repeats indefinitely
     tempDelayMixer.gain(0, 1.0);
     isRecordingLoop = false;
+  }
+
+  if (synthButton.pressed() && !isCommittingLoop && !isRecordingLoop) {
+    // to prevent race conditions, do not allow committing a loop if in the
+    // middle of recording a loop
+    Serial.println("Commit button pressed");
+    // enable temp delay signal into full delay
+    fullDelayMixer.gain(1, 1.0);
+    commitRecordingStart = timer;
+    isCommittingLoop = true;
+  }
+
+  if (timer >= (commitRecordingStart + LOOP_TIME) && isCommittingLoop) {
+    Serial.println("Commit recording stopped");
+    // disable temp delay signal into full delay
+    fullDelayMixer.gain(1, 0.0);
+    // resets the feedback to 1.0 so the loop repeats indefinitely
+    // fullDelayMixer.gain(0, 1.0); // already always 1.0 for full delay!
+    isCommittingLoop = false;
   }
 
   delay(10);  // prevents ramp down bug, switch to timer instead of delay later
