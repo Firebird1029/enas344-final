@@ -158,9 +158,11 @@ void setup(void) {
   sgtl5000_1.enable();
   sgtl5000_1.volume(MASTER_VOLUME);
 
-  inWaveformFM.begin(0, baseFreq, WAVEFORM_SINE);
-  inWaveformMod.begin(1.0, baseFreq, WAVEFORM_SAWTOOTH);
+  inWaveformFM.begin(0.0, 6, WAVEFORM_SINE);
+
+  inWaveformMod.begin(1.0, baseFreq, WAVEFORM_SINE);
   inWaveformMod.frequencyModulation(1);
+
   inEnvelope.attack(10.5);
   inEnvelope.hold(2.5);
   inEnvelope.decay(35);
@@ -364,6 +366,10 @@ void loop() {
     fullDelay.clear();
   }
 
+  // VIBRATO
+  // Serial.println(pitch);
+  inWaveformFM.amplitude(mapFloat(abs(pitch), 0, 0.5, 0, 0.1));
+
   delay(10);  // prevents ramp down bug, switch to timer instead of delay later
 }
 
@@ -393,4 +399,13 @@ int getRibbonPotValAndMap(int newMin, int newMax) {
   pos = (newMax - newMin) * pos + newMin;  // mapped position
 
   return (int)pos;
+}
+
+// https://forum.arduino.cc/t/arduino-map-function-for-float-values/112888/2
+/**
+ * @brief mapFloat (no automatic clipping, output can exceed out_min/out_max)
+ */
+float mapFloat(float x, float in_min, float in_max, float out_min,
+               float out_max) {
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
