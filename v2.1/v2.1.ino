@@ -124,12 +124,23 @@ float yaw = 0;
 float baseFreq = 440.0;
 
 // GLOBAL - GENERAL
-// TODO add comments
 
-elapsedMillis timer;
-long unsigned int tempRecordingStart = 0, commitRecordingStart = 0;
-int mappedRibbonPotVal = 0;
-bool isRecordingLoop = false, isCommittingLoop = false;
+elapsedMillis timer;  // master timer (auto-incrementing)
+
+long unsigned int
+    tempRecordingStart =
+        0,  // timestamp when recording started (recording into temp delay)
+    commitRecordingStart =
+        0;  // timestamp when commit started (recording into full delay)
+
+int mappedRibbonPotVal =
+    0;  // ribbon softpot values mapped to integer half-tones above fundamental
+
+// STATES
+bool isRecordingLoop = false,  // true if recording loop
+    isCommittingLoop = false,  // true if committing loop
+    listeningForRoll =
+        false;  // true if listening for roll angle (after recording loop)
 
 // curSustainStatus == 0 && ribbon released -> do nothing
 // curSustainStatus == 0 && ribbon pressed -> note on, set status := 1
@@ -283,7 +294,7 @@ void loop() {
   synthButton.update();
   clearButton.update();
 
-  // Recording functionality
+  // START RECORDING
   if (loopButton.pressed() && !isRecordingLoop && !isCommittingLoop) {
     // to prevent race conditions, do not allow recording a loop if in the
     // middle of committing a loop
@@ -297,6 +308,7 @@ void loop() {
     isRecordingLoop = true;
   }
 
+  // FINISH RECORDING
   if (timer >= (tempRecordingStart + LOOP_TIME) && isRecordingLoop) {
     Serial.println("Recording stopped");
     // turn off the signal into the delay loop
@@ -306,18 +318,30 @@ void loop() {
     isRecordingLoop = false;
 
     outMixer.gain(2, 1.0);  // temp delay
+    listeningForRoll = true;
   }
 
-  if (synthButton.pressed() && !isCommittingLoop && !isRecordingLoop) {
-    // to prevent race conditions, do not allow committing a loop if in the
-    // middle of recording a loop
-    Serial.println("Commit button pressed");
-    // enable temp delay signal into full delay
-    fullDelayMixer.gain(1, 1.0);
-    commitRecordingStart = timer;
-    isCommittingLoop = true;
+  // START COMMITTING LAYER
+  // if (synthButton.pressed() && !isCommittingLoop && !isRecordingLoop) {
+  if (listeningForRoll) {
+    if (roll < -1.0) {
+      Serial.println("SAVE roll detected");
+      listeningForRoll = false;
+      // enable temp delay signal into full delay
+      fullDelayMixer.gain(1, 1.0);
+
+      commitRecordingStart = timer;
+      isCommittingLoop = true;
+    }
+
+    if (roll > 1.0) {
+      Serial.println("DISCARD roll detected");
+      listeningForRoll = false;
+      tempDelay.clear();
+    }
   }
 
+  // FINISH COMMITTING LAYER
   if (timer >= (commitRecordingStart + LOOP_TIME) && isCommittingLoop) {
     Serial.println("Commit recording stopped");
     // disable temp delay signal into full delay
@@ -333,13 +357,12 @@ void loop() {
     outMixer.gain(1, 1.0);  // full delay
   }
 
+  // CLEAR FULL DELAY
   if (clearButton.pressed() && !isCommittingLoop) {
     Serial.println("Clear button pressed");
     // clear the loop
     fullDelay.clear();
   }
-
-  // Serial.println(pitch);
 
   delay(10);  // prevents ramp down bug, switch to timer instead of delay later
 }
