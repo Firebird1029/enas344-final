@@ -58,34 +58,36 @@ AudioEffectdelayLoop tempDelay;  // xy=607,182
 AudioEffectdelayLoop fullDelay;  // xy=868,201
 
 // GUItool: begin automatically generated code
-AudioSynthSimpleDrum drum1;                 // xy=55,176
+AudioSynthSimpleDrum drumSynth;             // xy=64,167
 AudioSynthWaveform inWaveformFM;            // xy=77,58
 AudioSynthWaveformModulated inWaveformMod;  // xy=120,103
 AudioEffectEnvelope inEnvelope;             // xy=282,102
+AudioMixer4 inMixer;                        // xy=335,177
 AudioMixer4 tempDelayMixer;                 // xy=457,302
-// AudioEffectDelay tempDelay;                 // xy=607,182
+// AudioEffectDelay         tempDelay;         //xy=607,182
 AudioSynthWaveformSine outLadderFreqSine;  // xy=681,89
 AudioMixer4 outMixer;                      // xy=712,35
-AudioMixer4 fullDelayMixer;                // xy=735,410
-// AudioEffectDelay fullDelay;                 // xy=868,201
-AudioFilterLadder outLadder;  // xy=880,30
-AudioOutputI2S i2s1;          // xy=1071,29
-AudioConnection patchCord1(drum1, 0, tempDelayMixer, 2);
+AudioMixer4 fullDelayMixer;                // xy=844,211
+AudioFilterLadder outLadder;               // xy=880,30
+// AudioEffectDelay         fullDelay;         //xy=1022,193
+AudioOutputI2S i2s1;  // xy=1071,29
+AudioConnection patchCord1(drumSynth, 0, inMixer, 1);
 AudioConnection patchCord2(inWaveformFM, 0, inWaveformMod, 0);
 AudioConnection patchCord3(inWaveformMod, inEnvelope);
-AudioConnection patchCord4(inEnvelope, 0, tempDelayMixer, 1);
-AudioConnection patchCord5(inEnvelope, 0, outMixer, 0);
-AudioConnection patchCord6(tempDelayMixer, tempDelay);
-AudioConnection patchCord7(tempDelayMixer, 0, fullDelayMixer, 1);
+AudioConnection patchCord4(inEnvelope, 0, inMixer, 0);
+AudioConnection patchCord5(inMixer, 0, tempDelayMixer, 1);
+AudioConnection patchCord6(inMixer, 0, outMixer, 0);
+AudioConnection patchCord7(tempDelayMixer, tempDelay);
 AudioConnection patchCord8(tempDelay, 0, tempDelayMixer, 0);
 AudioConnection patchCord9(tempDelay, 0, outMixer, 2);
-AudioConnection patchCord10(outLadderFreqSine, 0, outLadder, 1);
-AudioConnection patchCord11(outMixer, 0, outLadder, 0);
-AudioConnection patchCord12(fullDelayMixer, fullDelay);
-AudioConnection patchCord13(fullDelay, 0, fullDelayMixer, 0);
-AudioConnection patchCord14(fullDelay, 0, outMixer, 1);
-AudioConnection patchCord15(outLadder, 0, i2s1, 0);
-AudioConnection patchCord16(outLadder, 0, i2s1, 1);
+AudioConnection patchCord10(tempDelay, 0, fullDelayMixer, 1);
+AudioConnection patchCord11(outLadderFreqSine, 0, outLadder, 1);
+AudioConnection patchCord12(outMixer, 0, outLadder, 0);
+AudioConnection patchCord13(fullDelayMixer, fullDelay);
+AudioConnection patchCord14(outLadder, 0, i2s1, 0);
+AudioConnection patchCord15(outLadder, 0, i2s1, 1);
+AudioConnection patchCord16(fullDelay, 0, fullDelayMixer, 0);
+AudioConnection patchCord17(fullDelay, 0, outMixer, 1);
 AudioControlSGTL5000 sgtl5000_1;  // xy=64.5,20
 // GUItool: end automatically generated code
 
@@ -158,6 +160,11 @@ void setup(void) {
   sgtl5000_1.enable();
   sgtl5000_1.volume(MASTER_VOLUME);
 
+  drumSynth.frequency(60);
+  drumSynth.length(1500);
+  drumSynth.secondMix(0.0);
+  drumSynth.pitchMod(0.55);
+
   inWaveformFM.begin(0.0, 6, WAVEFORM_SINE);
 
   inWaveformMod.begin(1.0, baseFreq, WAVEFORM_SINE);
@@ -169,9 +176,11 @@ void setup(void) {
   inEnvelope.sustain(0.8);
   inEnvelope.release(300);
 
+  inMixer.gain(0, 1.0);  // ribbon softpot (pitch)
+  inMixer.gain(1, 1.0);  // drum synth
+
   tempDelayMixer.gain(0, 0.0);  // feedback
-  tempDelayMixer.gain(1, 0.0);  // ribbon TODO change to inMixer
-  tempDelayMixer.gain(2, 0.0);  // drum TODO remove
+  tempDelayMixer.gain(1, 0.0);  // inMixer
 
   outLadderFreqSine.frequency(10);
   outLadderFreqSine.amplitude(0);
@@ -184,16 +193,6 @@ void setup(void) {
 
   fullDelayMixer.gain(0, 1.0);  // feedback
   fullDelayMixer.gain(1, 0.0);  // temp mixer
-
-  // delay lines -- these lines of code must happen in order
-  tempDelay.begin(DELAY_LINE_TEMP, DELAYLINE_MAX_LEN);
-  fullDelay.begin(DELAY_LINE_FULL, DELAYLINE_MAX_LEN);
-  tempDelay.delay(0, LOOP_TIME);  // must come after tempDelay.begin!
-  fullDelay.delay(0, LOOP_TIME);  // must come after fullDelay.begin!
-
-  // clear delay lines -- avoid initial random noise
-  tempDelay.clear();
-  fullDelay.clear();
 
   outLadder.frequency(100000);
   outLadder.octaveControl(6);
@@ -224,6 +223,16 @@ void setup(void) {
   mpu.setAccelerometerRange(MPU6050_RANGE_2_G);
   mpu.setGyroRange(MPU6050_RANGE_500_DEG);
   mpu.setFilterBandwidth(MPU6050_BAND_184_HZ);
+
+  // DELAY LINES
+  tempDelay.begin(DELAY_LINE_TEMP, DELAYLINE_MAX_LEN);
+  fullDelay.begin(DELAY_LINE_FULL, DELAYLINE_MAX_LEN);
+  tempDelay.delay(0, LOOP_TIME);  // must come after tempDelay.begin!
+  fullDelay.delay(0, LOOP_TIME);  // must come after fullDelay.begin!
+
+  // clear delay lines -- avoid initial random noise
+  tempDelay.clear();
+  fullDelay.clear();
 
   Serial.println("Finished setup.");
   delay(100);
@@ -369,6 +378,13 @@ void loop() {
   // VIBRATO
   // Serial.println(pitch);
   inWaveformFM.amplitude(mapFloat(abs(pitch), 0, 0.5, 0, 0.1));
+
+  if (abs(accelz) > 17.0) {
+    // a shake up/down usually goes up to 19.0
+    // TODO (optional) change to change in accel
+    Serial.println(accelz);
+    drumSynth.noteOn();
+  }
 
   delay(10);  // prevents ramp down bug, switch to timer instead of delay later
 }
