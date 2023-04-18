@@ -333,11 +333,12 @@ void loop() {
     outMixer.gain(1, 1.0);  // full delay
   }
 
-  if (clearButton.pressed()) {
+  if (clearButton.pressed() && !isCommittingLoop) {
     Serial.println("Clear button pressed");
     // clear the loop
     fullDelay.clear();
   }
+
   delay(10);  // prevents ramp down bug, switch to timer instead of delay later
 }
 
