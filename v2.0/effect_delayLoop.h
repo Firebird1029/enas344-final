@@ -49,6 +49,9 @@ class AudioEffectdelayLoop : public AudioStream {
   float getWrite(void);  //returns value between 0.0 and 1.0 for write position in delayline
   float getMillis(uint8_t channel); //returns value between 0.0 and 1.0 for each tap position in delayline
   float getOffset(uint8_t channel); //returns offset from write position
+
+  // clear delay line
+  void clear();
  
   uint32_t loopMin_samples;
   uint32_t loopMax_samples;

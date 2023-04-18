@@ -19,7 +19,8 @@
 #define RIBBON_POT_PIN_1 41  // A17
 #define RIBBON_POT_PIN_2 40  // A16
 #define LOOP_BTN_PIN 32
-#define SYNTH_BTN_PIN 31
+#define COMMIT_BTN_PIN 31
+#define CLEAR_BTN_PIN 30
 
 // MOTION
 
@@ -94,6 +95,7 @@ Encoder enc(ENCODER_A_PIN, ENCODER_B_PIN);
 // BUTTONS
 Button loopButton = Button();
 Button synthButton = Button();
+Button clearButton = Button();
 
 // MPU6050
 Adafruit_MPU6050 mpu;
@@ -122,6 +124,7 @@ float yaw = 0;
 float baseFreq = 440.0;
 
 // GLOBAL - GENERAL
+// TODO add comments
 
 elapsedMillis timer;
 long unsigned int tempRecordingStart = 0, commitRecordingStart = 0;
@@ -161,17 +164,23 @@ void setup(void) {
   outLadderFreqSine.amplitude(0);
 
   outMixer.gain(0, 1.0);  // realtime dry input
-  outMixer.gain(1, 1.0);  // full delay
-  outMixer.gain(2, 1.0);  // temp delay
+  outMixer.gain(1,
+                0.0);  // full delay -- set to 0.0 to avoid initial random noise
+  outMixer.gain(2,
+                0.0);  // temp delay -- set to 0.0 to avoid initial random noise
 
   fullDelayMixer.gain(0, 1.0);  // feedback
   fullDelayMixer.gain(1, 0.0);  // temp mixer
 
-  // delay lines
+  // delay lines -- these lines of code must happen in order
   tempDelay.begin(DELAY_LINE_TEMP, DELAYLINE_MAX_LEN);
   fullDelay.begin(DELAY_LINE_FULL, DELAYLINE_MAX_LEN);
   tempDelay.delay(0, LOOP_TIME);  // must come after tempDelay.begin!
   fullDelay.delay(0, LOOP_TIME);  // must come after fullDelay.begin!
+
+  // clear delay lines -- avoid initial random noise
+  tempDelay.clear();
+  fullDelay.clear();
 
   outLadder.frequency(100000);
   outLadder.octaveControl(6);
@@ -181,13 +190,16 @@ void setup(void) {
   loopButton.interval(5);
   loopButton.setPressedState(LOW);
 
-  synthButton.attach(SYNTH_BTN_PIN, INPUT_PULLUP);
+  synthButton.attach(COMMIT_BTN_PIN, INPUT_PULLUP);
   synthButton.interval(5);
   synthButton.setPressedState(LOW);
 
+  clearButton.attach(CLEAR_BTN_PIN, INPUT_PULLUP);
+  clearButton.interval(5);
+  clearButton.setPressedState(LOW);
+
   // MOTION SETUP
-  // TODO
-  /* Serial.println("Initializing MPU6050...");
+  Serial.println("Initializing MPU6050...");
   if (!mpu.begin()) {
     Serial.println("ERROR: Failed to find MPU6050 chip!");
     while (1) {
@@ -198,7 +210,7 @@ void setup(void) {
 
   mpu.setAccelerometerRange(MPU6050_RANGE_2_G);
   mpu.setGyroRange(MPU6050_RANGE_500_DEG);
-  mpu.setFilterBandwidth(MPU6050_BAND_184_HZ); */
+  mpu.setFilterBandwidth(MPU6050_BAND_184_HZ);
 
   Serial.println("Finished setup.");
   delay(100);
@@ -206,8 +218,7 @@ void setup(void) {
 
 void loop() {
   // Read motion data
-  // TODO
-  /* sensors_event_t a, g, temp;
+  sensors_event_t a, g, temp;
   mpu.getEvent(&a, &g, &temp);
 
   accelx = -(a.acceleration.y - ACCELY_OFF) / ACCELY_SCALE;
@@ -235,7 +246,7 @@ void loop() {
          (1 - MOTION_ALPHA) * accelRoll;  // final roll value
 
   // ladder1.frequency(abs(pitch * 1000 + 500));
-  // outLadderFreqSine.amplitude(roll / 10); */
+  // outLadderFreqSine.amplitude(roll / 10);
 
   // Read encoder data
   // Serial.println(enc.read());
@@ -270,9 +281,12 @@ void loop() {
   // Read button data
   loopButton.update();
   synthButton.update();
+  clearButton.update();
 
   // Recording functionality
-  if (loopButton.pressed() && !isRecordingLoop) {
+  if (loopButton.pressed() && !isRecordingLoop && !isCommittingLoop) {
+    // to prevent race conditions, do not allow recording a loop if in the
+    // middle of committing a loop
     Serial.println("Loop button pressed");
     // send the synth signal into the delay loop
     tempDelayMixer.gain(1, 1.0);
@@ -290,6 +304,8 @@ void loop() {
     // resets the feedback to 1.0 so the loop repeats indefinitely
     tempDelayMixer.gain(0, 1.0);
     isRecordingLoop = false;
+
+    outMixer.gain(2, 1.0);  // temp delay
   }
 
   if (synthButton.pressed() && !isCommittingLoop && !isRecordingLoop) {
@@ -306,11 +322,22 @@ void loop() {
     Serial.println("Commit recording stopped");
     // disable temp delay signal into full delay
     fullDelayMixer.gain(1, 0.0);
+
+    // disable temp delay signal feedback
+    tempDelayMixer.gain(0, 0.0);
+
     // resets the feedback to 1.0 so the loop repeats indefinitely
     // fullDelayMixer.gain(0, 1.0); // already always 1.0 for full delay!
     isCommittingLoop = false;
+
+    outMixer.gain(1, 1.0);  // full delay
   }
 
+  if (clearButton.pressed()) {
+    Serial.println("Clear button pressed");
+    // clear the loop
+    fullDelay.clear();
+  }
   delay(10);  // prevents ramp down bug, switch to timer instead of delay later
 }
 

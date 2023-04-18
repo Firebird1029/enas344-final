@@ -19,6 +19,13 @@ void AudioEffectdelayLoop::begin(int16_t *delay_l, uint32_t max_delay_length) {
   
 }
 
+void AudioEffectdelayLoop::clear() {
+  for (size_t i = 0; i < max_delay_length_samples; i++)
+  {
+    delay_line[i] = 0;
+  }
+}
+
 
 // activate a tap and/or change time with a fade between old and new time (no clicks), transition time in millis
 uint32_t AudioEffectdelayLoop::delayfade(uint8_t channel, float milliseconds, float transition_time) {

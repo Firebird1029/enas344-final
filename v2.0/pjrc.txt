@@ -15,16 +15,17 @@ AudioConnection          patchCord1(drum1, 0, tempDelayMixer, 2);
 AudioConnection          patchCord2(inWaveformFM, 0, inWaveformMod, 0);
 AudioConnection          patchCord3(inWaveformMod, inEnvelope);
 AudioConnection          patchCord4(inEnvelope, 0, tempDelayMixer, 1);
-AudioConnection          patchCord5(tempDelayMixer, tempDelay);
-AudioConnection          patchCord6(tempDelayMixer, 0, outMixer, 0);
+AudioConnection          patchCord5(inEnvelope, 0, outMixer, 0);
+AudioConnection          patchCord6(tempDelayMixer, tempDelay);
 AudioConnection          patchCord7(tempDelayMixer, 0, fullDelayMixer, 1);
 AudioConnection          patchCord8(tempDelay, 0, tempDelayMixer, 0);
-AudioConnection          patchCord9(outLadderFreqSine, 0, outLadder, 1);
-AudioConnection          patchCord10(outMixer, 0, outLadder, 0);
-AudioConnection          patchCord11(fullDelayMixer, fullDelay);
-AudioConnection          patchCord12(fullDelayMixer, 0, outMixer, 1);
+AudioConnection          patchCord9(tempDelay, 0, outMixer, 2);
+AudioConnection          patchCord10(outLadderFreqSine, 0, outLadder, 1);
+AudioConnection          patchCord11(outMixer, 0, outLadder, 0);
+AudioConnection          patchCord12(fullDelayMixer, fullDelay);
 AudioConnection          patchCord13(fullDelay, 0, fullDelayMixer, 0);
-AudioConnection          patchCord14(outLadder, 0, i2s1, 0);
-AudioConnection          patchCord15(outLadder, 0, i2s1, 1);
+AudioConnection          patchCord14(fullDelay, 0, outMixer, 1);
+AudioConnection          patchCord15(outLadder, 0, i2s1, 0);
+AudioConnection          patchCord16(outLadder, 0, i2s1, 1);
 AudioControlSGTL5000     sgtl5000_1;     //xy=64.5,20
 // GUItool: end automatically generated code
