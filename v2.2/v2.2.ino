@@ -14,8 +14,9 @@
 
 // PINOUT
 
-#define ENCODER_A_PIN 2
-#define ENCODER_B_PIN 3
+#define ENCODER_DT_PIN 28
+#define ENCODER_CLK_PIN 29
+#define ENCODER_BTN_PIN 27
 #define RIBBON_POT_PIN_1 41  // A17
 #define RIBBON_POT_PIN_2 40  // A16
 #define LOOP_BTN_PIN 32
@@ -92,12 +93,13 @@ AudioControlSGTL5000 sgtl5000_1;  // xy=64.5,20
 // GUItool: end automatically generated code
 
 // ENCODER
-Encoder enc(ENCODER_A_PIN, ENCODER_B_PIN);
+Encoder enc(ENCODER_CLK_PIN, ENCODER_DT_PIN);
 
 // BUTTONS
 Button loopButton = Button();
 Button synthButton = Button();
 Button clearButton = Button();
+Button encButton = Button();
 
 // MPU6050
 Adafruit_MPU6050 mpu;
@@ -210,6 +212,10 @@ void setup(void) {
   clearButton.interval(5);
   clearButton.setPressedState(LOW);
 
+  encButton.attach(ENCODER_BTN_PIN, INPUT_PULLUP);
+  encButton.interval(5);
+  encButton.setPressedState(LOW);
+
   // MOTION SETUP
   Serial.println("Initializing MPU6050...");
   if (!mpu.begin()) {
@@ -271,7 +277,7 @@ void loop() {
   // outLadderFreqSine.amplitude(roll / 10);
 
   // Read encoder data
-  // Serial.println(enc.read());
+  Serial.println(enc.read());
   // inWaveformMod.frequency(baseFreq + enc.read());
 
   // Read ribbon pot data
@@ -304,6 +310,11 @@ void loop() {
   loopButton.update();
   synthButton.update();
   clearButton.update();
+  encButton.update();
+
+  if (encButton.pressed()) {
+    Serial.println("Encoder button pressed");
+  }
 
   // START RECORDING
   if (loopButton.pressed() && !isRecordingLoop && !isCommittingLoop) {
