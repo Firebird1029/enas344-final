@@ -20,7 +20,6 @@
   https://www.arduino.cc/en/Tutorial/BuiltInExamples/AnalogInOutSerial
 */
 
-
 int a0 = 0, a1 = 0;  // value read from the pot
 float x, y;
 
@@ -34,27 +33,26 @@ void loop() {
   a0 = analogRead(41);
   a1 = analogRead(40);
 
-if (a0 > 10) {
-x = ((1023 / (float) a0) - 1) * (10/9.78);
-} else {
-  x = -1;
-}
-if (a1 > 10) {
-y = ((1023 / (float) a1) - 1) * (10/9.81);
-} else {
-  y = -1;
-}
-  
+  if (a0 > 10) {
+    x = ((1023 / (float)a0) - 1) * (10 / 9.78);
+  } else {
+    x = -1;
+  }
+  if (a1 > 10) {
+    y = ((1023 / (float)a1) - 1) * (10 / 9.81);
+  } else {
+    y = -1;
+  }
 
   // print the results to the Serial Monitor:
   Serial.print("x = ");
   Serial.print(x);
-    Serial.print("\t y = ");
+  Serial.print("\t y = ");
   Serial.print(y);
   Serial.print("\t 1 - y = ");
   Serial.print(1 - y);
   Serial.print("\t avg = ");
-  Serial.print((x + (1-y)) / 2);
+  Serial.print((x + (1 - y)) / 2);
   Serial.print("\t a0 = ");
   Serial.print(a0);
   Serial.print("\t a1 = ");
