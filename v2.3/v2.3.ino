@@ -22,6 +22,7 @@
 // menu encoder sensitivity (how many encoder steps per menu item)
 #define MES 10
 
+#define CHIPTUNE_FREQ_MOD 6.0
 #define DELAYLINE_MAX_LEN 441000  // 44100 samples/sec * 10 sec
 
 // PINOUT
@@ -191,11 +192,18 @@ bool curSustainStatus = false;
 
 // GLOBAL - MENU (OLED + ENCODER)
 
+// Warning: Make sure all 3 variables match!
 #define NUM_MODE_OPTIONS 5
 const char *MODE_OPTIONS[NUM_MODE_OPTIONS] = {"Simple", "Soft", "Chiptune",
                                               "Chord", "Percussion"};
-int modeIndex = 0;
-int clientMasterVolume = 100;
+enum MODE_STATE {
+  MODE_SIMPLE = 0,
+  MODE_SOFT,
+  MODE_CHIPTUNE,
+  MODE_CHORD,
+  MODE_PERCUSSION
+};
+
 enum MENU_STATE {
   MENU_MODE,
   MENU_VOLUME,
@@ -207,7 +215,9 @@ enum MENU_ACTIVE { MENU_INACTIVE, MENU_ACTIVE_OPTION };
 MENU_STATE menuState = MENU_MODE;
 MENU_ACTIVE menuActiveState = MENU_INACTIVE;
 
-int encValue,       // current encoder value
+MODE_STATE currentSoundMode = MODE_SIMPLE;  // see MODE_OPTIONS
+int clientMasterVolume = 100,               // 0-100
+    encValue,                               // current encoder value
     savedEncValue;  // encValue of main menu (before entering active option)
 
 void setup(void) {
@@ -232,8 +242,8 @@ void setup(void) {
 
   // Chiptune
   chipDC.amplitude(0);
-  chipWave.begin(1.0, baseFreq, WAVEFORM_SAWTOOTH);
-  chipWave.frequencyModulation(6);
+  chipWave.begin(1.0, baseFreq, WAVEFORM_BANDLIMIT_SQUARE);
+  chipWave.frequencyModulation(CHIPTUNE_FREQ_MOD);
 
   // Chords -- copy & paste from Basic Synth
   // TODO set to defines
@@ -473,6 +483,9 @@ void loop() {
     drumSynth.noteOn();
   }
 
+  // MODE SELECTION
+  modeSelectionCode();
+
   // MENU
   menuCode();
 
@@ -488,12 +501,19 @@ void ribbonPotCode() {
   if (mappedRibbonPotVal > -1) {
     // ribbon pressed
     inWaveformMod.frequency(baseFreq * pow(2, mappedRibbonPotVal / 12.0));
+    // TODO ask Konrad about chord2wave major vs. minor at some point
+    chord2wave.frequency(baseFreq * pow(2, (mappedRibbonPotVal + 4) / 12.0));
+    chord3wave.frequency(baseFreq * pow(2, (mappedRibbonPotVal + 7) / 12.0));
 
     if (curSustainStatus) {
       // sustain note
     } else {
       // note on
       inEnvelope.noteOn();
+
+      chord2env.noteOn();
+      chord3env.noteOn();
+
       curSustainStatus = true;
     }
   } else {
@@ -501,6 +521,10 @@ void ribbonPotCode() {
     if (curSustainStatus) {
       // note off
       inEnvelope.noteOff();
+
+      chord2env.noteOff();
+      chord3env.noteOff();
+
       curSustainStatus = false;
     }
   }
@@ -532,6 +556,32 @@ int getRibbonPotValAndMap(int newMin, int newMax) {
   return (int)pos;
 }
 
+// MODE SELECTION CODE
+void modeSelectionCode() {
+  for (int i = 0; i < 4; i++) {
+    modeSelect.gain(i, 0.0);
+  }
+
+  // Simple
+  if (currentSoundMode == 0) {
+    inWaveformMod.amplitude(1.0);
+    modeSelect.gain(0, 1.0);
+  }
+
+  // Chord
+  if (currentSoundMode == MODE_CHORD) {
+    inWaveformMod.amplitude(0.33);
+    chord2wave.amplitude(0.33);
+    chord3wave.amplitude(0.33);
+    modeSelect.gain(2, 1.0);
+
+  } else {
+    chord2env.noteOff();
+    chord3env.noteOff();
+    // do not: chord2/3wave.amplitude(0.0); ! (prevents envelope from releasing)
+  }
+}
+
 // MENU CODE
 
 void menuCode() {
@@ -559,10 +609,13 @@ void menuCode() {
     if (menuState == MENU_MODE) {
       // encoder toggles through mode options
       if (encValue >= MES) {
-        modeIndex = (modeIndex + 1) % NUM_MODE_OPTIONS;
+        currentSoundMode =
+            (MODE_STATE)(currentSoundMode + 1) % NUM_MODE_OPTIONS;
         enc.write(0);
       } else if (encValue <= -MES) {
-        modeIndex = (modeIndex + NUM_MODE_OPTIONS - 1) % NUM_MODE_OPTIONS;
+        currentSoundMode =
+            (MODE_STATE)(currentSoundMode + NUM_MODE_OPTIONS - 1) %
+            NUM_MODE_OPTIONS;
         enc.write(0);
       }
     }
@@ -628,7 +681,7 @@ void menuCode() {
 
   // Mode
   displayMenuPrefix(MENU_MODE);
-  display.println(MODE_OPTIONS[modeIndex]);
+  display.println(MODE_OPTIONS[currentSoundMode]);
 
   // Volume
   displayMenuPrefix(MENU_VOLUME);
