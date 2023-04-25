@@ -326,29 +326,8 @@ void loop() {
   // ladder1.frequency(abs(pitch * 1000 + 500));
   // outLadderFreqSine.amplitude(roll / 10);
 
-  // Read ribbon pot data
-  mappedRibbonPotVal = getRibbonPotValAndMap(0, 12);
-  // Serial.println(mappedRibbonPotVal);
-
-  if (mappedRibbonPotVal > -1) {
-    // ribbon pressed
-    inWaveformMod.frequency(baseFreq * pow(2, mappedRibbonPotVal / 12.0));
-
-    if (curSustainStatus) {
-      // sustain note
-    } else {
-      // note on
-      inEnvelope.noteOn();
-      curSustainStatus = true;
-    }
-  } else {
-    // inWaveformMod.amplitude(0);
-    if (curSustainStatus) {
-      // note off
-      inEnvelope.noteOff();
-      curSustainStatus = false;
-    }
-  }
+  // RIBBON POT (PITCH)
+  ribbonPotCode();
 
   // Read button data
   // loopButton.update();
@@ -445,7 +424,32 @@ void loop() {
   delay(10);  // prevents ramp down bug, switch to timer instead of delay later
 }
 
-// HELPER FUNCTIONS
+// RIBBON POT CODE
+
+void ribbonPotCode() {
+  mappedRibbonPotVal = getRibbonPotValAndMap(0, 12);
+  // Serial.println(mappedRibbonPotVal);
+
+  if (mappedRibbonPotVal > -1) {
+    // ribbon pressed
+    inWaveformMod.frequency(baseFreq * pow(2, mappedRibbonPotVal / 12.0));
+
+    if (curSustainStatus) {
+      // sustain note
+    } else {
+      // note on
+      inEnvelope.noteOn();
+      curSustainStatus = true;
+    }
+  } else {
+    // inWaveformMod.amplitude(0);
+    if (curSustainStatus) {
+      // note off
+      inEnvelope.noteOff();
+      curSustainStatus = false;
+    }
+  }
+}
 
 /**
  * @brief get the ribbon pot val and map it to a new range if being pressed
@@ -471,15 +475,6 @@ int getRibbonPotValAndMap(int newMin, int newMax) {
   pos = (newMax - newMin) * pos + newMin;  // mapped position
 
   return (int)pos;
-}
-
-// https://forum.arduino.cc/t/arduino-map-function-for-float-values/112888/2
-/**
- * @brief mapFloat (no automatic clipping, output can exceed out_min/out_max)
- */
-float mapFloat(float x, float in_min, float in_max, float out_min,
-               float out_max) {
-  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
 // MENU CODE
@@ -524,6 +519,12 @@ void menuCode() {
       } else if (clientMasterVolume > 100) {
         clientMasterVolume = 100;
       }
+
+      // set volume
+      for (int i = 0; i < 4; i++) {
+        outMixer.gain(i, clientMasterVolume / 100.0);
+      }
+
       enc.write(0);
     }
   }
@@ -594,4 +595,15 @@ void displayMenuPrefix(int ms) {
     display.print(" ");
   }
   display.print(" ");
+}
+
+// HELPER FUNCTIONS
+
+// https://forum.arduino.cc/t/arduino-map-function-for-float-values/112888/2
+/**
+ * @brief mapFloat (no automatic clipping, output can exceed out_min/out_max)
+ */
+float mapFloat(float x, float in_min, float in_max, float out_min,
+               float out_max) {
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
