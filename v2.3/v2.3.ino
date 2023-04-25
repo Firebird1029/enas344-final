@@ -243,7 +243,7 @@ void setup(void) {
 
   // Basic Synth
   inWaveformFM.begin(0.0, 6, WAVEFORM_SINE);
-  inWaveformMod.begin(1.0, BASE_FREQ, WAVEFORM_SINE);
+  inWaveformMod.begin(1.0, BASE_FREQ, WAVEFORM_SAWTOOTH);
   inWaveformMod.frequencyModulation(1);
   inEnvelope.attack(10.5);
   inEnvelope.hold(2.5);
@@ -595,8 +595,14 @@ void modeSelectionCode() {
   }
 
   // Simple
-  if (currentSoundMode == 0) {
-    inWaveformMod.amplitude(1.0);
+  if (currentSoundMode == MODE_SIMPLE) {
+    inWaveformMod.begin(1.0, BASE_FREQ, WAVEFORM_SAWTOOTH);
+    modeSelect.gain(0, 1.0);
+  }
+
+  // Soft
+  if (currentSoundMode == MODE_SOFT) {
+    inWaveformMod.begin(1.0, BASE_FREQ, WAVEFORM_SINE);
     modeSelect.gain(0, 1.0);
   }
 
