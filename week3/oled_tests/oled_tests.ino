@@ -13,14 +13,14 @@
 Encoder enc(ENCODER_DT_PIN, ENCODER_CLK_PIN);
 Button encButton = Button();
 
-#define SCREEN_WIDTH 128  // OLED display width, in pixels
-#define SCREEN_HEIGHT 32  // OLED display height, in pixels
-#define OLED_RESET -1     // Reset pin # (or -1 if sharing Arduino reset pin)
+#define SCREEN_WIDTH 128   // OLED display width, in pixels
+#define SCREEN_HEIGHT 32   // OLED display height, in pixels
+#define OLED_RESET_PIN -1  // Reset pin # (or -1 if sharing Arduino reset pin)
 #define SCREEN_ADDRESS 0x3C
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET_PIN);
 
-#define MES \
-  10  // menu encoder sensitivity (how many encoder steps per menu item)
+// menu encoder sensitivity (how many encoder steps per menu item)
+#define MES 10
 
 void setup() {
   Serial.begin(9600);
@@ -44,7 +44,7 @@ void setup() {
   encButton.setPressedState(LOW);
 }
 
-const int NUM_MODE_OPTIONS = 5;
+#define NUM_MODE_OPTIONS 5
 const char *MODE_OPTIONS[NUM_MODE_OPTIONS] = {"Simple", "Soft", "Chiptune",
                                               "Chord", "Percussion"};
 int modeIndex = 0;
@@ -123,10 +123,11 @@ void loop() {
         if (menuState == MENU_START_LOOP) {
           // startLoop();
         }
+      } else {
+        savedEncValue = encValue;
+        enc.write(0);
+        menuActiveState = MENU_ACTIVE_OPTION;
       }
-      savedEncValue = encValue;
-      enc.write(0);
-      menuActiveState = MENU_ACTIVE_OPTION;
     } else {
       // change to inactive (main menu) state
       encValue = savedEncValue;
