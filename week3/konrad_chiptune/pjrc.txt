@@ -1,0 +1,11 @@
+// GUItool: begin automatically generated code
+AudioSynthWaveformDc     dc1;            //xy=344,131
+AudioSynthWaveformModulated waveformMod1;   //xy=526,137
+AudioMixer4              mixer1;         //xy=754,155
+AudioOutputI2S           i2s1;           //xy=953,162
+AudioConnection          patchCord1(dc1, 0, waveformMod1, 0);
+AudioConnection          patchCord2(waveformMod1, 0, mixer1, 0);
+AudioConnection          patchCord3(mixer1, 0, i2s1, 0);
+AudioConnection          patchCord4(mixer1, 0, i2s1, 1);
+AudioControlSGTL5000     sgtl5000_1;     //xy=766,222
+// GUItool: end automatically generated code
