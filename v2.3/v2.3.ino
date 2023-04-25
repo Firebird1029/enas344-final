@@ -398,11 +398,11 @@ void loop() {
   // gyroYaw =  gyroYaw + gyroz * 0.01;
 
   accelPitch = atan2(-accelx, sqrt(accely * accely + accelz * accelz));
-  accelRoll = atan2(-accely, -accelz);
+  accelRoll = atan2(accely, sqrt(accelx * accelx + accelz * accelz));
 
   pitch = MOTION_ALPHA * (pitch + pitchDot * 0.01) +
           (1 - MOTION_ALPHA) * accelPitch;  // final pitch value
-  roll = MOTION_ALPHA * (roll + rollDot * 0.01) +
+  roll = -MOTION_ALPHA * (roll + rollDot * 0.01) -
          (1 - MOTION_ALPHA) * accelRoll;  // final roll value
 
   // ladder1.frequency(abs(pitch * 1000 + 500));
