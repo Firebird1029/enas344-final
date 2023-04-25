@@ -14,7 +14,9 @@
 
 // PINOUT
 
-#define ENCODER_DT_PIN 4
+#define ENCODER_DT_PIN \
+  4  // reversed on purpose, so clockwise is positive, and
+     // counter-clockwise is negative
 #define ENCODER_CLK_PIN 3
 #define ENCODER_BTN_PIN 2
 #define RIBBON_POT_PIN_1 41  // A17
@@ -96,9 +98,9 @@ AudioControlSGTL5000 sgtl5000_1;  // xy=64.5,20
 Encoder enc(ENCODER_CLK_PIN, ENCODER_DT_PIN);
 
 // BUTTONS
-Button loopButton = Button();
-Button synthButton = Button();
-Button clearButton = Button();
+// Button loopButton = Button();
+// Button synthButton = Button();
+// Button clearButton = Button();
 Button encButton = Button();
 
 // MPU6050
@@ -200,17 +202,17 @@ void setup(void) {
   outLadder.octaveControl(6);
 
   // BUTTON SETUP
-  loopButton.attach(LOOP_BTN_PIN, INPUT_PULLUP);
-  loopButton.interval(5);
-  loopButton.setPressedState(LOW);
+  // loopButton.attach(LOOP_BTN_PIN, INPUT_PULLUP);
+  // loopButton.interval(5);
+  // loopButton.setPressedState(LOW);
 
-  synthButton.attach(COMMIT_BTN_PIN, INPUT_PULLUP);
-  synthButton.interval(5);
-  synthButton.setPressedState(LOW);
+  // synthButton.attach(COMMIT_BTN_PIN, INPUT_PULLUP);
+  // synthButton.interval(5);
+  // synthButton.setPressedState(LOW);
 
-  clearButton.attach(CLEAR_BTN_PIN, INPUT_PULLUP);
-  clearButton.interval(5);
-  clearButton.setPressedState(LOW);
+  // clearButton.attach(CLEAR_BTN_PIN, INPUT_PULLUP);
+  // clearButton.interval(5);
+  // clearButton.setPressedState(LOW);
 
   encButton.attach(ENCODER_BTN_PIN, INPUT_PULLUP);
   encButton.interval(5);
@@ -277,7 +279,7 @@ void loop() {
   // outLadderFreqSine.amplitude(roll / 10);
 
   // Read encoder data
-  Serial.println(enc.read());
+  // Serial.println(enc.read());
   // inWaveformMod.frequency(baseFreq + enc.read());
 
   // Read ribbon pot data
@@ -292,7 +294,6 @@ void loop() {
       // sustain note
     } else {
       // note on
-      Serial.println("note on");
       inEnvelope.noteOn();
       curSustainStatus = true;
     }
@@ -300,16 +301,15 @@ void loop() {
     // inWaveformMod.amplitude(0);
     if (curSustainStatus) {
       // note off
-      Serial.println("note off");
       inEnvelope.noteOff();
       curSustainStatus = false;
     }
   }
 
   // Read button data
-  loopButton.update();
-  synthButton.update();
-  clearButton.update();
+  // loopButton.update();
+  // synthButton.update();
+  // clearButton.update();
   encButton.update();
 
   if (encButton.pressed()) {
@@ -317,18 +317,21 @@ void loop() {
   }
 
   // START RECORDING
-  if (loopButton.pressed() && !isRecordingLoop && !isCommittingLoop) {
-    // to prevent race conditions, do not allow recording a loop if in the
-    // middle of committing a loop
-    Serial.println("Loop button pressed");
-    // send the synth signal into the delay loop
-    tempDelayMixer.gain(1, 1.0);
-    // comment this line if you don't want to clear the loop when you record
-    // new material
-    tempDelayMixer.gain(0, 0.0);
-    tempRecordingStart = timer;
-    isRecordingLoop = true;
-  }
+  // if (loopButton.pressed() && !isRecordingLoop && !isCommittingLoop) {
+  //   // to prevent race conditions, do not allow recording a loop if in the
+  //   // middle of committing a loop
+  //   Serial.println("Loop button pressed");
+  //   // send the synth signal into the delay loop
+  //   tempDelayMixer.gain(1, 1.0);
+  //   // comment this line if you don't want to clear the loop when you record
+  //   // new material
+  //   tempDelayMixer.gain(0, 0.0);
+
+  //   outMixer.gain(2, 0.0);  // disable temp delay
+
+  //   tempRecordingStart = timer;
+  //   isRecordingLoop = true;
+  // }
 
   // FINISH RECORDING
   if (timer >= (tempRecordingStart + LOOP_TIME) && isRecordingLoop) {
@@ -339,7 +342,7 @@ void loop() {
     tempDelayMixer.gain(0, 1.0);
     isRecordingLoop = false;
 
-    outMixer.gain(2, 1.0);  // temp delay
+    outMixer.gain(2, 1.0);  // enable temp delay
     listeningForRoll = true;
   }
 
@@ -350,7 +353,7 @@ void loop() {
       Serial.println("SAVE roll detected");
       listeningForRoll = false;
       // enable temp delay signal into full delay
-      fullDelayMixer.gain(1, 1.0);
+      fullDelayMixer.gain(1, 1.0);  // TODO fix double timbre glitch
 
       commitRecordingStart = timer;
       isCommittingLoop = true;
@@ -380,11 +383,11 @@ void loop() {
   }
 
   // CLEAR FULL DELAY
-  if (clearButton.pressed() && !isCommittingLoop) {
-    Serial.println("Clear button pressed");
-    // clear the loop
-    fullDelay.clear();
-  }
+  // if (clearButton.pressed() && !isCommittingLoop) {
+  //   Serial.println("Clear button pressed");
+  //   // clear the loop
+  //   fullDelay.clear();
+  // }
 
   // VIBRATO
   // Serial.println(pitch);
