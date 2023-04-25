@@ -408,6 +408,10 @@ void loop() {
   // ladder1.frequency(abs(pitch * 1000 + 500));
   // outLadderFreqSine.amplitude(roll / 10);
 
+  // MODE SELECTION
+  // must come before RIBBON POT (PITCH) code
+  modeSelectionCode();
+
   // RIBBON POT (PITCH)
   ribbonPotCode();
 
@@ -499,9 +503,6 @@ void loop() {
     Serial.println(accelz);
     drumSynth.noteOn();
   }
-
-  // MODE SELECTION
-  modeSelectionCode();
 
   // MENU
   menuCode();
@@ -596,13 +597,15 @@ void modeSelectionCode() {
 
   // Simple
   if (currentSoundMode == MODE_SIMPLE) {
-    inWaveformMod.begin(1.0, BASE_FREQ, WAVEFORM_SAWTOOTH);
+    inWaveformMod.begin(WAVEFORM_SAWTOOTH);
+    inWaveformMod.amplitude(1.0);
     modeSelect.gain(0, 1.0);
   }
 
   // Soft
   if (currentSoundMode == MODE_SOFT) {
-    inWaveformMod.begin(1.0, BASE_FREQ, WAVEFORM_SINE);
+    inWaveformMod.begin(WAVEFORM_SINE);
+    inWaveformMod.amplitude(1.0);
     modeSelect.gain(0, 1.0);
   }
 
@@ -614,6 +617,7 @@ void modeSelectionCode() {
 
   // Chord
   if (currentSoundMode == MODE_CHORD) {
+    inWaveformMod.begin(WAVEFORM_SINE);
     inWaveformMod.amplitude(0.33);
     chord2wave.amplitude(0.33);
     chord3wave.amplitude(0.33);
