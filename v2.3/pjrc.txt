@@ -1,7 +1,7 @@
 // GUItool: begin automatically generated code
 AudioSynthWaveformDc     chipDC;            //xy=55,613
-AudioSynthWaveform       chord3fm;      //xy=59,539
-AudioSynthWaveform       chord2fm;      //xy=60,499
+AudioSynthWaveform       chord2fm;      //xy=59,499
+AudioSynthWaveform       chord3fm;      //xy=60,539
 AudioSynthSimpleDrum     drumSynth;      //xy=64.5,167
 AudioSynthWaveform       inWaveformFM;   //xy=77,401
 AudioSynthWaveformModulated inWaveformMod;  //xy=191.5,452
@@ -10,6 +10,7 @@ AudioSynthWaveformModulated chord3wave;   //xy=201,545
 AudioSynthWaveformModulated chord2wave;   //xy=205,506
 AudioMixer4              modeSelect;         //xy=219,80
 AudioMixer4              inMixer;        //xy=335.5,177
+AudioEffectEnvelope      chipEnv;      //xy=335,620
 AudioEffectEnvelope      chord3env;      //xy=351,545
 AudioEffectEnvelope      chord2env;      //xy=353,506
 AudioEffectEnvelope      inEnvelope;     //xy=363.5,453
@@ -23,33 +24,34 @@ AudioFilterLadder        outLadder;      //xy=880.5,30
 AudioEffectDelay         fullDelay;      //xy=1022.5,193
 AudioOutputI2S           i2s1;           //xy=1071.5,29
 AudioConnection          patchCord1(chipDC, 0, chipWave, 0);
-AudioConnection          patchCord2(chord3fm, 0, chord3wave, 0);
-AudioConnection          patchCord3(chord2fm, 0, chord2wave, 0);
+AudioConnection          patchCord2(chord2fm, 0, chord2wave, 0);
+AudioConnection          patchCord3(chord3fm, 0, chord3wave, 0);
 AudioConnection          patchCord4(drumSynth, 0, inMixer, 1);
 AudioConnection          patchCord5(drumSynth, 0, modeSelect, 3);
 AudioConnection          patchCord6(inWaveformFM, 0, inWaveformMod, 0);
 AudioConnection          patchCord7(inWaveformMod, inEnvelope);
-AudioConnection          patchCord8(chipWave, 0, modeSelect, 1);
+AudioConnection          patchCord8(chipWave, chipEnv);
 AudioConnection          patchCord9(chord3wave, chord3env);
 AudioConnection          patchCord10(chord2wave, chord2env);
 AudioConnection          patchCord11(modeSelect, 0, inMixer, 0);
 AudioConnection          patchCord12(inMixer, 0, tempDelayMixer, 1);
 AudioConnection          patchCord13(inMixer, 0, outMixer, 0);
-AudioConnection          patchCord14(chord3env, 0, chordMixer, 2);
-AudioConnection          patchCord15(chord2env, 0, chordMixer, 1);
-AudioConnection          patchCord16(inEnvelope, 0, modeSelect, 0);
-AudioConnection          patchCord17(inEnvelope, 0, chordMixer, 0);
-AudioConnection          patchCord18(tempDelayMixer, tempDelay);
-AudioConnection          patchCord19(chordMixer, 0, modeSelect, 2);
-AudioConnection          patchCord20(tempDelay, 0, tempDelayMixer, 0);
-AudioConnection          patchCord21(tempDelay, 0, outMixer, 2);
-AudioConnection          patchCord22(tempDelay, 0, fullDelayMixer, 1);
-AudioConnection          patchCord23(outLadderFreqSine, 0, outLadder, 1);
-AudioConnection          patchCord24(outMixer, 0, outLadder, 0);
-AudioConnection          patchCord25(fullDelayMixer, fullDelay);
-AudioConnection          patchCord26(outLadder, 0, i2s1, 0);
-AudioConnection          patchCord27(outLadder, 0, i2s1, 1);
-AudioConnection          patchCord28(fullDelay, 0, fullDelayMixer, 0);
-AudioConnection          patchCord29(fullDelay, 0, outMixer, 1);
+AudioConnection          patchCord14(chipEnv, 0, modeSelect, 1);
+AudioConnection          patchCord15(chord3env, 0, chordMixer, 2);
+AudioConnection          patchCord16(chord2env, 0, chordMixer, 1);
+AudioConnection          patchCord17(inEnvelope, 0, modeSelect, 0);
+AudioConnection          patchCord18(inEnvelope, 0, chordMixer, 0);
+AudioConnection          patchCord19(tempDelayMixer, tempDelay);
+AudioConnection          patchCord20(chordMixer, 0, modeSelect, 2);
+AudioConnection          patchCord21(tempDelay, 0, tempDelayMixer, 0);
+AudioConnection          patchCord22(tempDelay, 0, outMixer, 2);
+AudioConnection          patchCord23(tempDelay, 0, fullDelayMixer, 1);
+AudioConnection          patchCord24(outLadderFreqSine, 0, outLadder, 1);
+AudioConnection          patchCord25(outMixer, 0, outLadder, 0);
+AudioConnection          patchCord26(fullDelayMixer, fullDelay);
+AudioConnection          patchCord27(outLadder, 0, i2s1, 0);
+AudioConnection          patchCord28(outLadder, 0, i2s1, 1);
+AudioConnection          patchCord29(fullDelay, 0, fullDelayMixer, 0);
+AudioConnection          patchCord30(fullDelay, 0, outMixer, 1);
 AudioControlSGTL5000     sgtl5000_1;     //xy=64.5,20
 // GUItool: end automatically generated code

@@ -22,7 +22,9 @@
 // menu encoder sensitivity (how many encoder steps per menu item)
 #define MES 10
 
+#define BASE_FREQ 440.0
 #define CHIPTUNE_FREQ_MOD 6.0
+#define CHIPTUNE_AMP_PER_SEMITONE (1.f / (CHIPTUNE_FREQ_MOD * 12))
 #define DELAYLINE_MAX_LEN 441000  // 44100 samples/sec * 10 sec
 
 // PINOUT
@@ -73,8 +75,8 @@ AudioEffectdelayLoop fullDelay;  // xy=868,201
 
 // GUItool: begin automatically generated code
 AudioSynthWaveformDc chipDC;                // xy=55,613
-AudioSynthWaveform chord3fm;                // xy=59,539
-AudioSynthWaveform chord2fm;                // xy=60,499
+AudioSynthWaveform chord2fm;                // xy=59,499
+AudioSynthWaveform chord3fm;                // xy=60,539
 AudioSynthSimpleDrum drumSynth;             // xy=64.5,167
 AudioSynthWaveform inWaveformFM;            // xy=77,401
 AudioSynthWaveformModulated inWaveformMod;  // xy=191.5,452
@@ -83,6 +85,7 @@ AudioSynthWaveformModulated chord3wave;     // xy=201,545
 AudioSynthWaveformModulated chord2wave;     // xy=205,506
 AudioMixer4 modeSelect;                     // xy=219,80
 AudioMixer4 inMixer;                        // xy=335.5,177
+AudioEffectEnvelope chipEnv;                // xy=335,620
 AudioEffectEnvelope chord3env;              // xy=351,545
 AudioEffectEnvelope chord2env;              // xy=353,506
 AudioEffectEnvelope inEnvelope;             // xy=363.5,453
@@ -96,34 +99,35 @@ AudioFilterLadder outLadder;               // xy=880.5,30
 // AudioEffectDelay         fullDelay;      //xy=1022.5,193
 AudioOutputI2S i2s1;  // xy=1071.5,29
 AudioConnection patchCord1(chipDC, 0, chipWave, 0);
-AudioConnection patchCord2(chord3fm, 0, chord3wave, 0);
-AudioConnection patchCord3(chord2fm, 0, chord2wave, 0);
+AudioConnection patchCord2(chord2fm, 0, chord2wave, 0);
+AudioConnection patchCord3(chord3fm, 0, chord3wave, 0);
 AudioConnection patchCord4(drumSynth, 0, inMixer, 1);
 AudioConnection patchCord5(drumSynth, 0, modeSelect, 3);
 AudioConnection patchCord6(inWaveformFM, 0, inWaveformMod, 0);
 AudioConnection patchCord7(inWaveformMod, inEnvelope);
-AudioConnection patchCord8(chipWave, 0, modeSelect, 1);
+AudioConnection patchCord8(chipWave, chipEnv);
 AudioConnection patchCord9(chord3wave, chord3env);
 AudioConnection patchCord10(chord2wave, chord2env);
 AudioConnection patchCord11(modeSelect, 0, inMixer, 0);
 AudioConnection patchCord12(inMixer, 0, tempDelayMixer, 1);
 AudioConnection patchCord13(inMixer, 0, outMixer, 0);
-AudioConnection patchCord14(chord3env, 0, chordMixer, 2);
-AudioConnection patchCord15(chord2env, 0, chordMixer, 1);
-AudioConnection patchCord16(inEnvelope, 0, modeSelect, 0);
-AudioConnection patchCord17(inEnvelope, 0, chordMixer, 0);
-AudioConnection patchCord18(tempDelayMixer, tempDelay);
-AudioConnection patchCord19(chordMixer, 0, modeSelect, 2);
-AudioConnection patchCord20(tempDelay, 0, tempDelayMixer, 0);
-AudioConnection patchCord21(tempDelay, 0, outMixer, 2);
-AudioConnection patchCord22(tempDelay, 0, fullDelayMixer, 1);
-AudioConnection patchCord23(outLadderFreqSine, 0, outLadder, 1);
-AudioConnection patchCord24(outMixer, 0, outLadder, 0);
-AudioConnection patchCord25(fullDelayMixer, fullDelay);
-AudioConnection patchCord26(outLadder, 0, i2s1, 0);
-AudioConnection patchCord27(outLadder, 0, i2s1, 1);
-AudioConnection patchCord28(fullDelay, 0, fullDelayMixer, 0);
-AudioConnection patchCord29(fullDelay, 0, outMixer, 1);
+AudioConnection patchCord14(chipEnv, 0, modeSelect, 1);
+AudioConnection patchCord15(chord3env, 0, chordMixer, 2);
+AudioConnection patchCord16(chord2env, 0, chordMixer, 1);
+AudioConnection patchCord17(inEnvelope, 0, modeSelect, 0);
+AudioConnection patchCord18(inEnvelope, 0, chordMixer, 0);
+AudioConnection patchCord19(tempDelayMixer, tempDelay);
+AudioConnection patchCord20(chordMixer, 0, modeSelect, 2);
+AudioConnection patchCord21(tempDelay, 0, tempDelayMixer, 0);
+AudioConnection patchCord22(tempDelay, 0, outMixer, 2);
+AudioConnection patchCord23(tempDelay, 0, fullDelayMixer, 1);
+AudioConnection patchCord24(outLadderFreqSine, 0, outLadder, 1);
+AudioConnection patchCord25(outMixer, 0, outLadder, 0);
+AudioConnection patchCord26(fullDelayMixer, fullDelay);
+AudioConnection patchCord27(outLadder, 0, i2s1, 0);
+AudioConnection patchCord28(outLadder, 0, i2s1, 1);
+AudioConnection patchCord29(fullDelay, 0, fullDelayMixer, 0);
+AudioConnection patchCord30(fullDelay, 0, outMixer, 1);
 AudioControlSGTL5000 sgtl5000_1;  // xy=64.5,20
 // GUItool: end automatically generated code
 
@@ -163,7 +167,14 @@ float yaw = 0;
 
 // GLOBAL - AUDIO
 
-float baseFreq = 440.0;
+#define ARPEGGIO_COUNT 1
+#define ARPEGGIO_SPEED 50  // ms between arpeggio notes
+int ARPEGGIO_LENGTHS[ARPEGGIO_COUNT] = {12};
+int ARPEGGIO_1[] = {0, 7, 12, 19, 24, 31, 36, 31, 24, 19, 12, 7};
+int *ARPEGGIOS[ARPEGGIO_COUNT] = {ARPEGGIO_1};
+
+int currentArpeggio = 0, curArpNoteIdx = 0;
+long unsigned int nextArpNoteTime = 0;
 
 // GLOBAL - GENERAL
 
@@ -232,7 +243,7 @@ void setup(void) {
 
   // Basic Synth
   inWaveformFM.begin(0.0, 6, WAVEFORM_SINE);
-  inWaveformMod.begin(1.0, baseFreq, WAVEFORM_SINE);
+  inWaveformMod.begin(1.0, BASE_FREQ, WAVEFORM_SINE);
   inWaveformMod.frequencyModulation(1);
   inEnvelope.attack(10.5);
   inEnvelope.hold(2.5);
@@ -242,13 +253,19 @@ void setup(void) {
 
   // Chiptune
   chipDC.amplitude(0);
-  chipWave.begin(1.0, baseFreq, WAVEFORM_BANDLIMIT_SQUARE);
+  chipWave.begin(0.5, BASE_FREQ, WAVEFORM_BANDLIMIT_SQUARE);
   chipWave.frequencyModulation(CHIPTUNE_FREQ_MOD);
+  // TODO set to defines
+  chipEnv.attack(10.5);
+  chipEnv.hold(2.5);
+  chipEnv.decay(35);
+  chipEnv.sustain(0.8);
+  chipEnv.release(300);
 
   // Chords -- copy & paste from Basic Synth
   // TODO set to defines
   chord2fm.begin(0.0, 6, WAVEFORM_SINE);
-  chord2wave.begin(1.0, baseFreq, WAVEFORM_SINE);
+  chord2wave.begin(1.0, BASE_FREQ, WAVEFORM_SINE);
   chord2wave.frequencyModulation(1);
   chord2env.attack(10.5);
   chord2env.hold(2.5);
@@ -257,7 +274,7 @@ void setup(void) {
   chord2env.release(300);
 
   chord3fm.begin(0.0, 6, WAVEFORM_SINE);
-  chord3wave.begin(1.0, baseFreq, WAVEFORM_SINE);
+  chord3wave.begin(1.0, BASE_FREQ, WAVEFORM_SINE);
   chord3wave.frequencyModulation(1);
   chord3env.attack(10.5);
   chord3env.hold(2.5);
@@ -500,20 +517,20 @@ void ribbonPotCode() {
 
   if (mappedRibbonPotVal > -1) {
     // ribbon pressed
-    inWaveformMod.frequency(baseFreq * pow(2, mappedRibbonPotVal / 12.0));
+    inWaveformMod.frequency(BASE_FREQ * pow(2, mappedRibbonPotVal / 12.0));
+    chipWave.frequency(BASE_FREQ * pow(2, mappedRibbonPotVal / 12.0));
     // TODO ask Konrad about chord2wave major vs. minor at some point
-    chord2wave.frequency(baseFreq * pow(2, (mappedRibbonPotVal + 4) / 12.0));
-    chord3wave.frequency(baseFreq * pow(2, (mappedRibbonPotVal + 7) / 12.0));
+    chord2wave.frequency(BASE_FREQ * pow(2, (mappedRibbonPotVal + 4) / 12.0));
+    chord3wave.frequency(BASE_FREQ * pow(2, (mappedRibbonPotVal + 7) / 12.0));
 
     if (curSustainStatus) {
       // sustain note
     } else {
       // note on
       inEnvelope.noteOn();
-
+      chipEnv.noteOn();
       chord2env.noteOn();
       chord3env.noteOn();
-
       curSustainStatus = true;
     }
   } else {
@@ -521,10 +538,9 @@ void ribbonPotCode() {
     if (curSustainStatus) {
       // note off
       inEnvelope.noteOff();
-
+      chipEnv.noteOff();
       chord2env.noteOff();
       chord3env.noteOff();
-
       curSustainStatus = false;
     }
   }
@@ -556,7 +572,23 @@ int getRibbonPotValAndMap(int newMin, int newMax) {
   return (int)pos;
 }
 
+// CHIPTUNE CODE
+
+void chiptuneCode() {
+  if (timer >= nextArpNoteTime + ARPEGGIO_SPEED) {
+    chipDC.amplitude(
+        ARPEGGIOS[currentArpeggio][curArpNoteIdx] * CHIPTUNE_AMP_PER_SEMITONE,
+        0);
+    curArpNoteIdx++;
+    if (curArpNoteIdx >= ARPEGGIO_LENGTHS[currentArpeggio]) {
+      curArpNoteIdx = 0;
+    }
+    nextArpNoteTime = timer;
+  }
+}
+
 // MODE SELECTION CODE
+
 void modeSelectionCode() {
   for (int i = 0; i < 4; i++) {
     modeSelect.gain(i, 0.0);
@@ -566,6 +598,12 @@ void modeSelectionCode() {
   if (currentSoundMode == 0) {
     inWaveformMod.amplitude(1.0);
     modeSelect.gain(0, 1.0);
+  }
+
+  // Chiptune
+  if (currentSoundMode == MODE_CHIPTUNE) {
+    chiptuneCode();
+    modeSelect.gain(1, 1.0);
   }
 
   // Chord
