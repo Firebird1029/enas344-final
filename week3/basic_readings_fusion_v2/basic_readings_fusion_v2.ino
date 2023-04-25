@@ -7,6 +7,8 @@
 //pins coming out from board on other side, also leaving a flatter attachment
 //surface
 
+// NOTE: This was changed on April 25, 2023 from accel_roll =   atan2(accely,accelz); to accel_roll =   atan2(-accely,-accelz); because it was upside down.
+
 #include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
 #include <Wire.h>
@@ -14,17 +16,17 @@
 Adafruit_MPU6050 mpu;
 
 float accelx,accely,accelz,gyrox,gyroy,gyroz = 0;
-float accelx_off = 0.35;
-float accely_off = 0.24; 
-float accelz_off = -.03; 
+float accelx_off = 0.295;
+float accely_off = 0.08; 
+float accelz_off = -0.2; 
 
-float gyrox_off = -0.0420; 
-float gyroy_off = +0.0164; 
-float gyroz_off = -.0050;
+float gyrox_off = -0.1197; 
+float gyroy_off = -0.0157; 
+float gyroz_off = -0.0190;
 
-float accelx_scale = 1;
-float accely_scale = 1;
-float accelz_scale = 1;
+float accelx_scale = 1.008;
+float accely_scale = 1.00;
+float accelz_scale = 0.98;
 
 
 float gyrox_scale = 1;
@@ -46,7 +48,7 @@ float pitch = 0;
 float roll = 0;
 float yaw = 0;
 
-float alpha = 0.995;
+float alpha = 0.5;
 
 long int timer = 0;
 
@@ -82,7 +84,7 @@ gyroy =  (g.gyro.y - gyroy_off);
 gyroz =  (g.gyro.z - gyroz_off);
 
 accel_pitch = atan2(-accelx,sqrt(accely*accely + accelz*accelz));
-accel_roll =   atan2(accely,accelz);
+accel_roll =   atan2(-accely,-accelz);
 
 pitch = accel_pitch;
 roll = accel_roll;
@@ -113,7 +115,7 @@ roll_dot = gyrox + sin(pitch) * yaw_dot;
 //gyro_yaw =  gyro_yaw + gyroz * 0.01;
 
 accel_pitch = atan2(-accelx,sqrt(accely*accely + accelz*accelz));
-accel_roll =   atan2(accely,accelz);
+accel_roll =   atan2(-accely,-accelz);
 
 pitch = alpha * (pitch + pitch_dot * 0.01) + (1-alpha) * accel_pitch;
 roll = alpha * (roll + roll_dot * 0.01) + (1-alpha) * accel_roll;
@@ -135,11 +137,11 @@ roll = alpha * (roll + roll_dot * 0.01) + (1-alpha) * accel_roll;
 //  Serial.print(gyroz);
 //  Serial.println(" rad/s");
 
-Serial.print(degrees(accel_pitch));
-Serial.print("    ");
+// Serial.print(degrees(accel_pitch));
+// Serial.print("    ");
 //Serial.print("  roll  ");
-Serial.print( degrees(accel_roll));
-Serial.print("    ");
+// Serial.print( degrees(accel_roll));
+// Serial.print("    ");
 //Serial.print(degrees(gyro_pitch));
 //Serial.print("    ");
 ////Serial.print("  roll  ");
@@ -155,6 +157,7 @@ Serial.print( degrees(roll));
 
 Serial.println();
 //  Serial.println(millis());
-while((micros()-timer)<10000){ // this delays for the remainder of the time up to 10ms
-  }
+// while((micros()-timer)<10000){ // this delays for the remainder of the time up to 10ms
+//   }
+delay(10);
 }

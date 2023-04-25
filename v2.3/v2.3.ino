@@ -381,13 +381,13 @@ void loop() {
   sensors_event_t a, g, temp;
   mpu.getEvent(&a, &g, &temp);
 
-  accelx = -(a.acceleration.y - ACCELY_OFF) / ACCELY_SCALE;
-  accely = -(a.acceleration.z - ACCELZ_OFF) / ACCELZ_SCALE;
-  accelz = -(a.acceleration.x - ACCELX_OFF) / ACCELX_SCALE;
+  accelx = -(a.acceleration.x - ACCELX_OFF) / ACCELX_SCALE;
+  accely = -(a.acceleration.y - ACCELY_OFF) / ACCELY_SCALE;
+  accelz = -(a.acceleration.z - ACCELZ_OFF) / ACCELZ_SCALE;
 
-  gyrox = (g.gyro.y - GYROY_OFF);
-  gyroy = (g.gyro.z - GYROZ_OFF);
-  gyroz = (g.gyro.x - GYROX_OFF);
+  gyrox = (g.gyro.x - GYROX_OFF);
+  gyroy = (g.gyro.y - GYROY_OFF);
+  gyroz = (g.gyro.z - GYROZ_OFF);
 
   pitchDot = gyroy * cos(roll) - gyroz * sin(roll);
   yawDot = (gyroy * sin(roll) + gyroz * cos(roll)) / cos(pitch);
@@ -398,7 +398,7 @@ void loop() {
   // gyroYaw =  gyroYaw + gyroz * 0.01;
 
   accelPitch = atan2(-accelx, sqrt(accely * accely + accelz * accelz));
-  accelRoll = atan2(accely, accelz);
+  accelRoll = atan2(-accely, -accelz);
 
   pitch = MOTION_ALPHA * (pitch + pitchDot * 0.01) +
           (1 - MOTION_ALPHA) * accelPitch;  // final pitch value
@@ -495,7 +495,7 @@ void loop() {
 
   // VIBRATO
   // Serial.println(pitch);
-  inWaveformFM.amplitude(mapFloat(abs(pitch), 0, 0.5, 0, 0.1));
+  inWaveformFM.amplitude(mapFloat(abs(roll), 0, 0.5, 0, 0.1));
 
   if (abs(accelz) > 17.0) {
     // a shake up/down usually goes up to 19.0
