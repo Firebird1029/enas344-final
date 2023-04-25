@@ -14,9 +14,9 @@
 
 // PINOUT
 
-#define ENCODER_DT_PIN 28
-#define ENCODER_CLK_PIN 29
-#define ENCODER_BTN_PIN 27
+#define ENCODER_DT_PIN 4
+#define ENCODER_CLK_PIN 3
+#define ENCODER_BTN_PIN 2
 #define RIBBON_POT_PIN_1 41  // A17
 #define RIBBON_POT_PIN_2 40  // A16
 #define LOOP_BTN_PIN 32
@@ -419,8 +419,8 @@ int getRibbonPotValAndMap(int newMin, int newMax) {
   }
 
   // calibrate by measuring actual resistance of 10k resistor (e.g. 9.93 or 9.8)
-  float x = ((1023 / (float)a1) - 1) * (9.93 / 9.39);
-  float y = ((1023 / (float)a2) - 1) * (9.8 / 9.39);
+  float x = ((1023 / (float)a1) - 1) * (10 / 9.78);
+  float y = ((1023 / (float)a2) - 1) * (10 / 9.81);
 
   float pos = (x + (1 - y)) / 2;  // normalized position (from 0.0 to 1.0)
   pos = (newMax - newMin) * pos + newMin;  // mapped position
