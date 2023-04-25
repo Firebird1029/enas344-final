@@ -64,6 +64,12 @@ int encValue, savedEncValue;  // savedEncValue = encValue of main menu (before
                               // entering active option)
 
 void loop() {
+  menuCode();
+
+  delay(10);
+}
+
+void menuCode() {
   // Encoder: Menu Navigation
   int encValue = enc.read();
   if (menuActiveState == MENU_INACTIVE) {
@@ -159,8 +165,6 @@ void loop() {
   display.println(clientMasterVolume);
 
   display.display();
-
-  delay(10);
 }
 
 void displayMenuPrefix(int ms) {
