@@ -6,13 +6,11 @@
 #include <SerialFlash.h>
 #include <Wire.h>
 
-#define ENCODER_DT_PIN \
-  4  // reversed on purpose, so clockwise is positive, and
-     // counter-clockwise is negative
-#define ENCODER_CLK_PIN 3
+#define ENCODER_DT_PIN 3
+#define ENCODER_CLK_PIN 4
 #define ENCODER_BTN_PIN 2
 
-Encoder enc(ENCODER_CLK_PIN, ENCODER_DT_PIN);
+Encoder enc(ENCODER_DT_PIN, ENCODER_CLK_PIN);
 Button encButton = Button();
 
 #define SCREEN_WIDTH 128  // OLED display width, in pixels

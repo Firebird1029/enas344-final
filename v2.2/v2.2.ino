@@ -14,10 +14,8 @@
 
 // PINOUT
 
-#define ENCODER_DT_PIN \
-  4  // reversed on purpose, so clockwise is positive, and
-     // counter-clockwise is negative
-#define ENCODER_CLK_PIN 3
+#define ENCODER_DT_PIN 3
+#define ENCODER_CLK_PIN 4
 #define ENCODER_BTN_PIN 2
 #define RIBBON_POT_PIN_1 41  // A17
 #define RIBBON_POT_PIN_2 40  // A16
@@ -95,7 +93,7 @@ AudioControlSGTL5000 sgtl5000_1;  // xy=64.5,20
 // GUItool: end automatically generated code
 
 // ENCODER
-Encoder enc(ENCODER_CLK_PIN, ENCODER_DT_PIN);
+Encoder enc(ENCODER_DT_PIN, ENCODER_CLK_PIN);
 
 // BUTTONS
 // Button loopButton = Button();
