@@ -167,6 +167,11 @@ float yaw = 0;
 
 // GLOBAL - AUDIO
 
+const int majorScale[8] = {0, 2, 4, 5, 7, 9, 11, 12};
+const int minorScale[8] = {0, 2, 3, 5, 7, 8, 10, 12};
+const int pentatonicScale[6] = {0, 2, 4, 7, 9, 12};
+enum SCALE_TYPE { MAJOR, MINOR, PENTATONIC, CHROMATIC };
+
 #define ARPEGGIO_COUNT 1
 #define ARPEGGIO_SPEED 50  // ms between arpeggio notes
 int ARPEGGIO_LENGTHS[ARPEGGIO_COUNT] = {12};
@@ -409,7 +414,7 @@ void loop() {
   // outLadderFreqSine.amplitude(roll / 10);
 
   // MODE SELECTION
-  // must come before RIBBON POT (PITCH) code
+  // must come before RIBBON POT (PITCH) code!
   modeSelectionCode();
 
   // RIBBON POT (PITCH)
@@ -513,7 +518,7 @@ void loop() {
 // RIBBON POT CODE
 
 void ribbonPotCode() {
-  mappedRibbonPotVal = getRibbonPotValAndMap(0, 12);
+  mappedRibbonPotVal = mapScale(MAJOR, getRibbonPotValAndMap(0, 8));
   // Serial.println(mappedRibbonPotVal);
 
   if (mappedRibbonPotVal > -1) {
@@ -570,7 +575,32 @@ int getRibbonPotValAndMap(int newMin, int newMax) {
   float pos = (x + (1 - y)) / 2;  // normalized position (from 0.0 to 1.0)
   pos = (newMax - newMin) * pos + newMin;  // mapped position
 
+  // clip position
+  if (pos < newMin) {
+    pos = newMin;
+  } else if (pos > newMax) {
+    pos = newMax;
+  }
+
   return (int)pos;
+}
+
+int mapScale(SCALE_TYPE scaleType, int step) {
+  if (step == -1) {
+    return -1;
+  }
+  if (scaleType == MAJOR) {
+    // convert step (from 0-6 inclusive) to a major scale
+    return majorScale[step];
+  } else if (scaleType == MINOR) {
+    // convert step (from 0-6 inclusive) to a minor scale
+    return minorScale[step];
+  } else if (scaleType == PENTATONIC) {
+    // convert step (from 0-5 inclusive) to a pentatonic scale
+    return pentatonicScale[step];
+  }
+
+  return step;
 }
 
 // CHIPTUNE CODE
@@ -691,8 +721,9 @@ void menuCode() {
     Serial.println("Encoder button pressed");
     if (menuActiveState == MENU_INACTIVE) {
       // change to active option state
+
+      // special exceptions, substate-less menu options
       if (menuState == MENU_START_LOOP || menuState == MENU_CLEAR) {
-        // substate-less menu options
         if (menuState == MENU_CLEAR) {
           // clearLoop();
         }
