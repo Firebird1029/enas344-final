@@ -167,6 +167,14 @@ float yaw = 0;
 
 // GLOBAL - AUDIO
 
+enum RECORDING_STATE {
+  READY_FOR_RECORD,
+  RECORDING,
+  READY_FOR_COMMIT,
+  COMMITTING
+};
+RECORDING_STATE recordingState = READY_FOR_RECORD;
+
 const int majorScale[8] = {0, 2, 4, 5, 7, 9, 11, 12};
 const int minorScale[8] = {0, 2, 3, 5, 7, 8, 10, 12};
 const int pentatonicScale[6] = {0, 2, 4, 7, 9, 12};
@@ -193,12 +201,6 @@ long unsigned int
 
 int mappedRibbonPotVal =
     0;  // ribbon softpot values mapped to integer half-tones above fundamental
-
-// GLOBAL - AUDIO STATES
-bool isRecordingLoop = false,  // true if recording loop
-    isCommittingLoop = false,  // true if committing loop
-    listeningForRoll =
-        false;  // true if listening for roll angle (after recording loop)
 
 // curSustainStatus == 0 && ribbon released -> do nothing
 // curSustainStatus == 0 && ribbon pressed -> note on, set status := 1
@@ -425,86 +427,17 @@ void loop() {
   // synthButton.update();
   // clearButton.update();
 
-  // START RECORDING
-  // if (loopButton.pressed() && !isRecordingLoop && !isCommittingLoop) {
-  //   // to prevent race conditions, do not allow recording a loop if in the
-  //   // middle of committing a loop
-  //   Serial.println("Loop button pressed");
-  //   // send the synth signal into the delay loop
-  //   tempDelayMixer.gain(1, 1.0);
-  //   // comment this line if you don't want to clear the loop when you record
-  //   // new material
-  //   tempDelayMixer.gain(0, 0.0);
-
-  //   outMixer.gain(2, 0.0);  // disable temp delay
-
-  //   tempRecordingStart = timer;
-  //   isRecordingLoop = true;
-  // }
-
-  // FINISH RECORDING
-  if (timer >= (tempRecordingStart + LOOP_TIME) && isRecordingLoop) {
-    Serial.println("Recording stopped");
-    // turn off the signal into the delay loop
-    tempDelayMixer.gain(1, 0.0);
-    // resets the feedback to 1.0 so the loop repeats indefinitely
-    tempDelayMixer.gain(0, 1.0);
-    isRecordingLoop = false;
-
-    outMixer.gain(2, 1.0);  // enable temp delay
-    listeningForRoll = true;
-  }
-
-  // START COMMITTING LAYER
-  // if (synthButton.pressed() && !isCommittingLoop && !isRecordingLoop) {
-  if (listeningForRoll) {
-    if (roll < -1.0) {
-      Serial.println("SAVE roll detected");
-      listeningForRoll = false;
-      // enable temp delay signal into full delay
-      fullDelayMixer.gain(1, 1.0);  // TODO fix double timbre glitch
-
-      commitRecordingStart = timer;
-      isCommittingLoop = true;
-    }
-
-    if (roll > 1.0) {
-      Serial.println("DISCARD roll detected");
-      listeningForRoll = false;
-      tempDelay.clear();
-    }
-  }
-
-  // FINISH COMMITTING LAYER
-  if (timer >= (commitRecordingStart + LOOP_TIME) && isCommittingLoop) {
-    Serial.println("Commit recording stopped");
-    // disable temp delay signal into full delay
-    fullDelayMixer.gain(1, 0.0);
-
-    // disable temp delay signal feedback
-    tempDelayMixer.gain(0, 0.0);
-
-    // resets the feedback to 1.0 so the loop repeats indefinitely
-    // fullDelayMixer.gain(0, 1.0); // already always 1.0 for full delay!
-    isCommittingLoop = false;
-
-    outMixer.gain(1, 1.0);  // full delay
-  }
-
-  // CLEAR FULL DELAY
-  // if (clearButton.pressed() && !isCommittingLoop) {
-  //   Serial.println("Clear button pressed");
-  //   // clear the loop
-  //   fullDelay.clear();
-  // }
+  // LOOP RECORDING
+  loopRecordingCode();
 
   // VIBRATO
   // Serial.println(pitch);
   inWaveformFM.amplitude(mapFloat(abs(roll), 0, 0.5, 0, 0.1));
 
-  if (abs(accelz) > 17.0) {
+  // QUICK PERCUSSION
+  if (abs(accelz) > 19.0 && abs(pitch) < 0.1) {
     // a shake up/down usually goes up to 19.0
-    // TODO (optional) change to change in accel
+    // TODO change to change in accel
     Serial.println(accelz);
     drumSynth.noteOn();
   }
@@ -725,13 +658,31 @@ void menuCode() {
       // special exceptions, substate-less menu options
       if (menuState == MENU_START_LOOP || menuState == MENU_CLEAR) {
         if (menuState == MENU_CLEAR) {
-          // clearLoop();
+          // clear loops
+          tempDelay.clear();
+          fullDelay.clear();
         }
 
         // TODO remove MENU_START_LOOP later
-        if (menuState == MENU_START_LOOP) {
-          // startLoop();
-        }
+        // if (menuState == MENU_START_LOOP) {
+        //   // startLoop();
+        //   if (!isRecordingLoop && !isCommittingLoop) {
+        //     // to prevent race conditions, do not allow recording a loop if
+        //     in
+        //     // the middle of committing a loop
+        //     Serial.println("Loop button pressed");
+        //     // send the synth signal into the delay loop
+        //     tempDelayMixer.gain(1, 1.0);
+        //     // comment this line if you don't want to clear the loop when you
+        //     // record new material
+        //     tempDelayMixer.gain(0, 0.0);
+
+        //     outMixer.gain(2, 0.0);  // disable temp delay
+
+        //     tempRecordingStart = timer;
+        //     isRecordingLoop = true;
+        //   }
+        // }
       } else {
         savedEncValue = encValue;
         enc.write(0);
@@ -782,6 +733,89 @@ void displayMenuPrefix(int ms) {
     display.print(" ");
   }
   display.print(" ");
+}
+
+// LOOP RECORDING CODE
+void loopRecordingCode() {
+  // START RECORDING
+  if (recordingState == READY_FOR_RECORD) {
+    if (pitch < 0.1 && pitch > -0.1) {
+      // to prevent race conditions, do not allow recording a loop if in the
+      // middle of committing a loop
+      Serial.println("Loop button pressed");
+      // send the synth signal into the delay loop
+      tempDelayMixer.gain(1, 1.0);
+      // comment this line if you don't want to clear the loop when you record
+      // new material
+      tempDelayMixer.gain(0, 0.0);
+
+      outMixer.gain(2, 0.0);  // disable temp delay
+
+      tempRecordingStart = timer;
+      recordingState = RECORDING;
+    }
+  }
+
+  // FINISH RECORDING
+  else if (recordingState == RECORDING) {
+    if (timer >= (tempRecordingStart + LOOP_TIME)) {
+      Serial.println("Recording stopped");
+      // turn off the signal into the delay loop
+      tempDelayMixer.gain(1, 0.0);
+      // resets the feedback to 1.0 so the loop repeats indefinitely
+      tempDelayMixer.gain(0, 1.0);
+
+      outMixer.gain(2, 1.0);  // enable temp delay
+      recordingState = READY_FOR_COMMIT;
+    }
+  }
+
+  // START COMMITTING LAYER
+  // if (synthButton.pressed() && !isCommittingLoop && !isRecordingLoop) {
+  else if (recordingState == READY_FOR_COMMIT) {
+    if (pitch < -1.3) {
+      Serial.println("SAVE pitch detected");
+      // enable temp delay signal into full delay
+      fullDelayMixer.gain(1, 1.0);
+
+      commitRecordingStart = timer;
+      recordingState = COMMITTING;
+    }
+
+    if (pitch > 1.3) {
+      Serial.println("DISCARD pitch detected");
+      recordingState = READY_FOR_RECORD;
+      tempDelay.clear();
+    }
+  }
+
+  // FINISH COMMITTING LAYER
+  else if (recordingState == COMMITTING) {
+    if (timer >= (commitRecordingStart + LOOP_TIME)) {
+      Serial.println("Commit recording stopped");
+
+      outMixer.gain(2, 0.0);  // disable temp delay, fixes double timbre glitch
+
+      // disable temp delay signal into full delay
+      fullDelayMixer.gain(1, 0.0);
+
+      // disable temp delay signal feedback
+      tempDelayMixer.gain(0, 0.0);
+
+      // resets the feedback to 1.0 so the loop repeats indefinitely
+      // fullDelayMixer.gain(0, 1.0); // already always 1.0 for full delay!
+      recordingState = READY_FOR_RECORD;
+
+      outMixer.gain(1, 1.0);  // enable full delay
+    }
+  }
+
+  // CLEAR FULL DELAY
+  // if (clearButton.pressed() && !isCommittingLoop) {
+  //   Serial.println("Clear button pressed");
+  //   // clear the loop
+  //   fullDelay.clear();
+  // }
 }
 
 // HELPER FUNCTIONS
