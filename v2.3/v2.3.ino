@@ -384,33 +384,8 @@ void setup(void) {
 }
 
 void loop() {
-  // Read motion data
-  sensors_event_t a, g, temp;
-  mpu.getEvent(&a, &g, &temp);
-
-  accelx = -(a.acceleration.x - ACCELX_OFF) / ACCELX_SCALE;
-  accely = -(a.acceleration.y - ACCELY_OFF) / ACCELY_SCALE;
-  accelz = -(a.acceleration.z - ACCELZ_OFF) / ACCELZ_SCALE;
-
-  gyrox = (g.gyro.x - GYROX_OFF);
-  gyroy = (g.gyro.y - GYROY_OFF);
-  gyroz = (g.gyro.z - GYROZ_OFF);
-
-  pitchDot = gyroy * cos(roll) - gyroz * sin(roll);
-  yawDot = (gyroy * sin(roll) + gyroz * cos(roll)) / cos(pitch);
-  rollDot = gyrox + sin(pitch) * yawDot;
-
-  // gyroPitch = gyroPitch + gyroy * 0.01;
-  // gyroRoll =  gyroRoll + gyrox * 0.01;
-  // gyroYaw =  gyroYaw + gyroz * 0.01;
-
-  accelPitch = atan2(-accelx, sqrt(accely * accely + accelz * accelz));
-  accelRoll = atan2(accely, sqrt(accelx * accelx + accelz * accelz));
-
-  pitch = MOTION_ALPHA * (pitch + pitchDot * 0.01) +
-          (1 - MOTION_ALPHA) * accelPitch;  // final pitch value
-  roll = -MOTION_ALPHA * (roll + rollDot * 0.01) -
-         (1 - MOTION_ALPHA) * accelRoll;  // final roll value
+  // MOTION CODE -- Read motion data
+  motionCode();
 
   // ladder1.frequency(abs(pitch * 1000 + 500));
   // outLadderFreqSine.amplitude(roll / 10);
@@ -446,6 +421,37 @@ void loop() {
   menuCode();
 
   delay(10);  // prevents ramp down bug, switch to timer instead of delay later
+}
+
+// MOTION CODE
+
+void motionCode() {
+  sensors_event_t a, g, temp;
+  mpu.getEvent(&a, &g, &temp);
+
+  accelx = -(a.acceleration.x - ACCELX_OFF) / ACCELX_SCALE;
+  accely = -(a.acceleration.y - ACCELY_OFF) / ACCELY_SCALE;
+  accelz = -(a.acceleration.z - ACCELZ_OFF) / ACCELZ_SCALE;
+
+  gyrox = (g.gyro.x - GYROX_OFF);
+  gyroy = (g.gyro.y - GYROY_OFF);
+  gyroz = (g.gyro.z - GYROZ_OFF);
+
+  pitchDot = gyroy * cos(roll) - gyroz * sin(roll);
+  yawDot = (gyroy * sin(roll) + gyroz * cos(roll)) / cos(pitch);
+  rollDot = gyrox + sin(pitch) * yawDot;
+
+  // gyroPitch = gyroPitch + gyroy * 0.01;
+  // gyroRoll =  gyroRoll + gyrox * 0.01;
+  // gyroYaw =  gyroYaw + gyroz * 0.01;
+
+  accelPitch = atan2(-accelx, sqrt(accely * accely + accelz * accelz));
+  accelRoll = atan2(accely, sqrt(accelx * accelx + accelz * accelz));
+
+  pitch = MOTION_ALPHA * (pitch + pitchDot * 0.01) +
+          (1 - MOTION_ALPHA) * accelPitch;  // final pitch value
+  roll = -MOTION_ALPHA * (roll + rollDot * 0.01) -
+         (1 - MOTION_ALPHA) * accelRoll;  // final roll value
 }
 
 // RIBBON POT CODE
