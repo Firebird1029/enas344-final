@@ -76,10 +76,12 @@ AudioEffectdelayLoop fullDelay;  // xy=868,201
 
 // GUItool: begin automatically generated code
 AudioSynthWaveformDc chipDC;                // xy=55,583
+AudioPlaySdRaw sdDrum1;                     // xy=58.5,701
+AudioPlaySdRaw sdDrum2;                     // xy=58.5,738
 AudioSynthWaveform chord2fm;                // xy=59.5,499
+AudioPlaySdRaw sdDrum3;                     // xy=58.5,776
 AudioSynthWaveform chord3fm;                // xy=60.5,539
-AudioSynthSimpleDrum drumSynth;             // xy=64,167
-AudioPlaySdRaw sdDrumSynth;                 // xy=72.5,207
+AudioSynthSimpleDrum drumSynth;             // xy=64,661
 AudioSynthWaveform inWaveformFM;            // xy=77.5,401
 AudioSynthWaveformDc inRamp;                // xy=120,298
 AudioSynthWaveformModulated inWaveformMod;  // xy=191.5,452
@@ -88,6 +90,7 @@ AudioSynthWaveformModulated chord3wave;     // xy=201.5,545
 AudioSynthWaveformModulated chord2wave;     // xy=205.5,506
 AudioMixer4 modeSelect;                     // xy=219.5,80
 AudioEffectMultiply multiply1;              // xy=252,325
+AudioMixer4 drumMixer;                      // xy=314,715
 AudioMixer4 inMixer;                        // xy=335.5,177
 AudioEffectEnvelope chipEnv;                // xy=335,590
 AudioEffectEnvelope chord3env;              // xy=351.5,545
@@ -106,40 +109,44 @@ AudioFilterLadder outLadder;               // xy=880.5,30
 // AudioEffectDelay         fullDelay;      //xy=1022.5,193
 AudioOutputI2S i2s1;  // xy=1071.5,29
 AudioConnection patchCord1(chipDC, 0, chipWave, 0);
-AudioConnection patchCord2(chord2fm, 0, chord2wave, 0);
-AudioConnection patchCord3(chord3fm, 0, chord3wave, 0);
-AudioConnection patchCord4(sdDrumSynth, 0, inMixer, 1);
-AudioConnection patchCord5(sdDrumSynth, 0, modeSelect, 3);
-AudioConnection patchCord6(inWaveformFM, 0, inWaveformMod, 0);
-AudioConnection patchCord7(inRamp, 0, multiply1, 0);
-AudioConnection patchCord8(inWaveformMod, inEnvelope);
-AudioConnection patchCord9(chipWave, chipEnv);
-AudioConnection patchCord10(chord3wave, chord3env);
-AudioConnection patchCord11(chord2wave, chord2env);
-AudioConnection patchCord12(modeSelect, 0, inMixer, 0);
-AudioConnection patchCord13(multiply1, 0, tempDelayMixer, 1);
-AudioConnection patchCord14(inMixer, 0, outMixer, 0);
-AudioConnection patchCord15(inMixer, 0, multiply1, 1);
-AudioConnection patchCord16(chipEnv, 0, modeSelect, 1);
-AudioConnection patchCord17(chord3env, 0, chordMixer, 2);
-AudioConnection patchCord18(chord2env, 0, chordMixer, 1);
-AudioConnection patchCord19(inEnvelope, 0, modeSelect, 0);
-AudioConnection patchCord20(inEnvelope, 0, chordMixer, 0);
-AudioConnection patchCord21(metronome, 0, outMixer, 3);
-AudioConnection patchCord22(tempDelayMixer, tempDelay);
-AudioConnection patchCord23(chordMixer, 0, modeSelect, 2);
-AudioConnection patchCord24(tempDelay, 0, tempDelayMixer, 0);
-AudioConnection patchCord25(tempDelay, 0, outMixer, 2);
-AudioConnection patchCord26(tempDelay, 0, multiply2, 1);
-AudioConnection patchCord27(fullRamp, 0, multiply2, 0);
-AudioConnection patchCord28(outLadderFreqSine, 0, outLadder, 1);
-AudioConnection patchCord29(outMixer, 0, outLadder, 0);
-AudioConnection patchCord30(multiply2, 0, fullDelayMixer, 1);
-AudioConnection patchCord31(fullDelayMixer, fullDelay);
-AudioConnection patchCord32(outLadder, 0, i2s1, 0);
-AudioConnection patchCord33(outLadder, 0, i2s1, 1);
-AudioConnection patchCord34(fullDelay, 0, fullDelayMixer, 0);
-AudioConnection patchCord35(fullDelay, 0, outMixer, 1);
+AudioConnection patchCord2(sdDrum1, 0, drumMixer, 1);
+AudioConnection patchCord3(sdDrum2, 0, drumMixer, 2);
+AudioConnection patchCord4(chord2fm, 0, chord2wave, 0);
+AudioConnection patchCord5(sdDrum3, 0, drumMixer, 3);
+AudioConnection patchCord6(chord3fm, 0, chord3wave, 0);
+AudioConnection patchCord7(drumSynth, 0, drumMixer, 0);
+AudioConnection patchCord8(inWaveformFM, 0, inWaveformMod, 0);
+AudioConnection patchCord9(inRamp, 0, multiply1, 0);
+AudioConnection patchCord10(inWaveformMod, inEnvelope);
+AudioConnection patchCord11(chipWave, chipEnv);
+AudioConnection patchCord12(chord3wave, chord3env);
+AudioConnection patchCord13(chord2wave, chord2env);
+AudioConnection patchCord14(modeSelect, 0, inMixer, 0);
+AudioConnection patchCord15(multiply1, 0, tempDelayMixer, 1);
+AudioConnection patchCord16(drumMixer, 0, modeSelect, 3);
+AudioConnection patchCord17(drumMixer, 0, inMixer, 1);
+AudioConnection patchCord18(inMixer, 0, outMixer, 0);
+AudioConnection patchCord19(inMixer, 0, multiply1, 1);
+AudioConnection patchCord20(chipEnv, 0, modeSelect, 1);
+AudioConnection patchCord21(chord3env, 0, chordMixer, 2);
+AudioConnection patchCord22(chord2env, 0, chordMixer, 1);
+AudioConnection patchCord23(inEnvelope, 0, modeSelect, 0);
+AudioConnection patchCord24(inEnvelope, 0, chordMixer, 0);
+AudioConnection patchCord25(metronome, 0, outMixer, 3);
+AudioConnection patchCord26(tempDelayMixer, tempDelay);
+AudioConnection patchCord27(chordMixer, 0, modeSelect, 2);
+AudioConnection patchCord28(tempDelay, 0, tempDelayMixer, 0);
+AudioConnection patchCord29(tempDelay, 0, outMixer, 2);
+AudioConnection patchCord30(tempDelay, 0, multiply2, 1);
+AudioConnection patchCord31(fullRamp, 0, multiply2, 0);
+AudioConnection patchCord32(outLadderFreqSine, 0, outLadder, 1);
+AudioConnection patchCord33(outMixer, 0, outLadder, 0);
+AudioConnection patchCord34(multiply2, 0, fullDelayMixer, 1);
+AudioConnection patchCord35(fullDelayMixer, fullDelay);
+AudioConnection patchCord36(outLadder, 0, i2s1, 0);
+AudioConnection patchCord37(outLadder, 0, i2s1, 1);
+AudioConnection patchCord38(fullDelay, 0, fullDelayMixer, 0);
+AudioConnection patchCord39(fullDelay, 0, outMixer, 1);
 AudioControlSGTL5000 sgtl5000_1;  // xy=64.5,20
 // GUItool: end automatically generated code
 
@@ -319,6 +326,11 @@ void setup(void) {
   drumSynth.length(1500);
   drumSynth.secondMix(0.0);
   drumSynth.pitchMod(0.55);
+  drumMixer.gain(0, 0.5);  // drum synth
+  drumMixer.gain(1, 0.5);  // sd sample reader 1
+  // ! using more than one sd read is buggy so sdDrum2 and sdDrum3 are unused
+  drumMixer.gain(2, 0.0);  // sd sample reader 2
+  drumMixer.gain(3, 0.0);  // sd sample reader 3
 
   // Metronome
   metronome.frequency(4000);
@@ -457,8 +469,8 @@ void loop() {
     // TODO change to change in accel
     Serial.println(accelz);
     // drumSynth.noteOn();
-    if (!sdDrumSynth.isPlaying()) {
-      sdDrumSynth.play(SD_PERC[0]);
+    if (!sdDrum1.isPlaying()) {
+      sdDrum1.play(SD_PERC[0]);
     }
   }
 
@@ -509,17 +521,24 @@ void ribbonPotCode() {
   if (timer >= lastCheckedRibbonPot + RIBBON_POT_CHECK_RATE) {
     lastCheckedRibbonPot = timer;
 
-    mappedRibbonPotVal = mapScale(MINOR, getRibbonPotValAndMap(0, 8));
-    // Serial.println(mappedRibbonPotVal);
+    mappedRibbonPotVal = getRibbonPotValAndMap(0, 8);
 
     if (mappedRibbonPotVal > -1) {
       // ribbon pressed
-      inWaveformMod.frequency(BASE_FREQ * pow(2, mappedRibbonPotVal / 12.0));
-      chipWave.frequency(BASE_FREQ * pow(2, mappedRibbonPotVal / 12.0));
-      // TODO ask Konrad about chord2wave major vs. minor at some point -- FIX
-      // TO SET SEMITONES
-      chord2wave.frequency(BASE_FREQ * pow(2, (mappedRibbonPotVal + 4) / 12.0));
-      chord3wave.frequency(BASE_FREQ * pow(2, (mappedRibbonPotVal + 7) / 12.0));
+
+      // set frequencies in pitched modes
+      if (currentSoundMode != MODE_PERCUSSION) {
+        mappedRibbonPotVal = mapScale(MINOR, mappedRibbonPotVal);
+
+        inWaveformMod.frequency(BASE_FREQ * pow(2, mappedRibbonPotVal / 12.0));
+        chipWave.frequency(BASE_FREQ * pow(2, mappedRibbonPotVal / 12.0));
+        // TODO ask Konrad about chord2wave major vs. minor at some point -- FIX
+        // TO SET SEMITONES
+        chord2wave.frequency(BASE_FREQ *
+                             pow(2, (mappedRibbonPotVal + 4) / 12.0));
+        chord3wave.frequency(BASE_FREQ *
+                             pow(2, (mappedRibbonPotVal + 7) / 12.0));
+      }
 
       if (curSustainStatus) {
         // sustain note
@@ -529,6 +548,12 @@ void ribbonPotCode() {
         chipEnv.noteOn();
         chord2env.noteOn();
         chord3env.noteOn();
+
+        // percussion mode
+        if (currentSoundMode == MODE_PERCUSSION) {
+          mapPercussion(mappedRibbonPotVal);
+        }
+
         curSustainStatus = true;
       }
     } else {
@@ -596,6 +621,57 @@ int mapScale(SCALE_TYPE scaleType, int step) {
   return step;
 }
 
+void mapPercussion(int sampleNum) {
+  if (sampleNum < 0 || sampleNum > 7) {
+    return;
+  }
+
+  // ! using more than one sd read is buggy so sdDrum2 and sdDrum3 are unused
+
+  // TODO switch to drumSynth instead of sdDrum1
+
+  switch (sampleNum) {
+    case 0:
+      sdDrum1.play(SD_PERC[0]);
+      break;
+    case 1:
+      sdDrum1.play(SD_PERC[1]);
+      break;
+    case 2:
+      sdDrum1.play(SD_PERC[2]);
+      break;
+    case 3:
+      sdDrum1.play(SD_PERC[2]);
+      break;
+    case 4:
+      sdDrum1.play(SD_PERC[3]);
+      break;
+    case 5:
+      sdDrum1.play(SD_PERC[4]);
+      break;
+    case 6:
+      sdDrum1.play(SD_PERC[5]);
+      break;
+    case 7:
+      sdDrum1.play(SD_PERC[6]);
+      break;
+    case 8:
+      sdDrum1.play(SD_PERC[7]);
+      break;
+  }
+
+  // 3 different SD read objects to enable percussive polyphony
+  // doesn't work :(
+  // if (!sdDrum1.isPlaying()) {
+  //   sdDrum1.play(SD_PERC[mappedRibbonPotVal]);
+  // } else if (!sdDrum2.isPlaying()) {
+  //   sdDrum2.play(SD_PERC[mappedRibbonPotVal]);
+  // }
+  // else if (!sdDrum3.isPlaying()) {
+  //   sdDrum3.play(SD_PERC[mappedRibbonPotVal]);
+  // }
+}
+
 // CHIPTUNE CODE
 
 void chiptuneCode() {
@@ -631,9 +707,12 @@ void metronomeCode() {
 // MODE SELECTION CODE
 
 void modeSelectionCode() {
+  // disable all input channels initially
   for (int i = 0; i < 4; i++) {
     modeSelect.gain(i, 0.0);
   }
+
+  inMixer.gain(1, 1.0);  // enable quick percussion
 
   // Simple
   if (currentSoundMode == MODE_SIMPLE) {
@@ -667,6 +746,12 @@ void modeSelectionCode() {
     chord2env.noteOff();
     chord3env.noteOff();
     // do not: chord2/3wave.amplitude(0.0); ! (prevents envelope from releasing)
+  }
+
+  // Percussion
+  if (currentSoundMode == MODE_PERCUSSION) {
+    inMixer.gain(1, 0.0);  // disable quick percussion
+    modeSelect.gain(3, 1.0);
   }
 }
 
