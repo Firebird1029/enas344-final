@@ -760,24 +760,28 @@ void loopRecordingCode() {
     if (pitch < 0.1 && pitch > -0.1) {
       // to prevent race conditions, do not allow recording a loop if in the
       // middle of committing a loop
-      Serial.println("Loop button pressed");
+      Serial.println("STARTING LOOP RECORDING");
       // send the synth signal into the delay loop
       tempDelayMixer.gain(1, 1.0);
       inRamp.amplitude(1.0, 50);
 
       // comment this line if you don't want to clear the loop when you record
       // new material
-      tempDelayMixer.gain(0, 0.0);
+      // tempDelayMixer.gain(0, 0.0);
+      tempDelayMixer.gain(0, 1.0);
 
-      outMixer.gain(2, 0.0);  // disable temp delay
+      // outMixer.gain(2, 0.0);  // disable temp delay
+      outMixer.gain(2, 1.0);  // enable temp delay
 
       tempRecordingStart = timer;
-      recordingState = RECORDING;
+
+      // recordingState = RECORDING;
+      recordingState = READY_FOR_COMMIT;
     }
   }
 
   // FINISH RECORDING
-  else if (recordingState == RECORDING) {
+  /* else if (recordingState == RECORDING) {
     if (timer >= (tempRecordingStart + LOOP_TIME)) {
       Serial.println("Recording stopped");
       // turn off the signal into the delay loop
@@ -790,13 +794,26 @@ void loopRecordingCode() {
       outMixer.gain(2, 1.0);  // enable temp delay
       recordingState = READY_FOR_COMMIT;
     }
-  }
+  } */
 
   // START COMMITTING LAYER
-  // if (synthButton.pressed() && !isCommittingLoop && !isRecordingLoop) {
   else if (recordingState == READY_FOR_COMMIT) {
     if (pitch < -1.3) {
-      Serial.println("SAVE pitch detected");
+      Serial.println("SAVE pitch detected, committing recording");
+
+      // FROM FINISH RECORDING
+
+      // turn off the signal into the delay loop
+      // tempDelayMixer.gain(1, 0.0);
+      inRamp.amplitude(0.0, 50);
+
+      // resets the feedback to 1.0 so the loop repeats indefinitely
+      // tempDelayMixer.gain(0, 1.0); // already on
+
+      outMixer.gain(2, 1.0);  // enable temp delay
+
+      // END FROM FINISH RECORDING
+
       // enable temp delay signal into full delay
       fullDelayMixer.gain(1, 1.0);
       fullRamp.amplitude(1.0, 50);
@@ -807,8 +824,15 @@ void loopRecordingCode() {
 
     if (pitch > 1.3) {
       Serial.println("DISCARD pitch detected");
-      recordingState = READY_FOR_RECORD;
+
+      // unnecessary because you have to orient back to playing position anyway
+      // turn off the signal into the delay loop
+      // tempDelayMixer.gain(1, 0.0);
+      // inRamp.amplitude(0.0, 50);
+
       tempDelay.clear();
+
+      recordingState = READY_FOR_RECORD;
     }
   }
 
@@ -826,11 +850,15 @@ void loopRecordingCode() {
       // disable temp delay signal feedback
       tempDelayMixer.gain(0, 0.0);
 
+      // clear temp delay (optional)
+      tempDelay.clear();
+
       // resets the feedback to 1.0 so the loop repeats indefinitely
       // fullDelayMixer.gain(0, 1.0); // already always 1.0 for full delay!
-      recordingState = READY_FOR_RECORD;
 
       outMixer.gain(1, 1.0);  // enable full delay
+
+      recordingState = READY_FOR_RECORD;
     }
   }
 
