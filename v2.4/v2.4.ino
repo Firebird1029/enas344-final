@@ -16,7 +16,7 @@
 
 // GENERAL
 
-#define LOOP_TIME 2000
+#define LOOP_TIME 2400  // 1 measure @ 100 bpm (1 quarter note = 600 ms)
 #define MASTER_VOLUME 0.8
 
 // menu encoder sensitivity (how many encoder steps per menu item)
@@ -389,6 +389,7 @@ void setup(void) {
   fullDelay.delay(0, LOOP_TIME);  // must come after fullDelay.begin!
 
   // clear delay lines -- avoid initial random noise
+  // TODO add double clear
   tempDelay.clear();
   fullDelay.clear();
 
@@ -683,7 +684,7 @@ void menuCode() {
       // special exceptions, substate-less menu options
       if (menuState == MENU_START_LOOP || menuState == MENU_CLEAR) {
         if (menuState == MENU_CLEAR) {
-          // clear loops
+          // clear loops -- TODO add double clear
           tempDelay.clear();
           fullDelay.clear();
         }
@@ -837,7 +838,7 @@ void loopRecordingCode() {
       // tempDelayMixer.gain(1, 0.0);
       // inRamp.amplitude(0.0, 50);
 
-      tempDelay.clear();
+      tempDelay.clear();  // TODO add double clear
 
       recordingState = READY_FOR_RECORD;
     }
