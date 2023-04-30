@@ -17,7 +17,7 @@
 // GENERAL
 
 #define LOOP_TIME 2000
-#define MASTER_VOLUME 0.7
+#define MASTER_VOLUME 0.8
 
 // menu encoder sensitivity (how many encoder steps per menu item)
 #define MES 10
@@ -259,7 +259,7 @@ void setup(void) {
 
   // Basic Synth
   inWaveformFM.begin(0.0, 6, WAVEFORM_SINE);
-  inWaveformMod.begin(1.0, BASE_FREQ, WAVEFORM_SAWTOOTH);
+  inWaveformMod.begin(0.5, BASE_FREQ, WAVEFORM_SAWTOOTH);
   inWaveformMod.frequencyModulation(1);
   inEnvelope.attack(10.5);
   inEnvelope.hold(2.5);
@@ -269,7 +269,7 @@ void setup(void) {
 
   // Chiptune
   chipDC.amplitude(0);
-  chipWave.begin(0.5, BASE_FREQ, WAVEFORM_BANDLIMIT_SQUARE);
+  chipWave.begin(0.25, BASE_FREQ, WAVEFORM_BANDLIMIT_SQUARE);
   chipWave.frequencyModulation(CHIPTUNE_FREQ_MOD);
   // TODO set to defines
   chipEnv.attack(10.5);
@@ -281,7 +281,7 @@ void setup(void) {
   // Chords -- copy & paste from Basic Synth
   // TODO set to defines
   chord2fm.begin(0.0, 6, WAVEFORM_SINE);
-  chord2wave.begin(1.0, BASE_FREQ, WAVEFORM_SINE);
+  chord2wave.begin(0.5, BASE_FREQ, WAVEFORM_SINE);
   chord2wave.frequencyModulation(1);
   chord2env.attack(10.5);
   chord2env.hold(2.5);
@@ -290,7 +290,7 @@ void setup(void) {
   chord2env.release(300);
 
   chord3fm.begin(0.0, 6, WAVEFORM_SINE);
-  chord3wave.begin(1.0, BASE_FREQ, WAVEFORM_SINE);
+  chord3wave.begin(0.5, BASE_FREQ, WAVEFORM_SINE);
   chord3wave.frequencyModulation(1);
   chord3env.attack(10.5);
   chord3env.hold(2.5);
@@ -313,8 +313,8 @@ void setup(void) {
   modeSelect.gain(1, 0.0);  // chiptune
   modeSelect.gain(2, 0.0);  // chord
   modeSelect.gain(3, 0.0);  // percussion
-  inMixer.gain(0, 1.0);     // mode output
-  inMixer.gain(1, 1.0);     // drum synth
+  inMixer.gain(0, 0.8);     // mode output
+  inMixer.gain(1, 0.8);     // drum synth
 
   // Delay Lines - Mixers Only
   tempDelayMixer.gain(0, 0.0);  // feedback
@@ -586,14 +586,14 @@ void modeSelectionCode() {
   // Simple
   if (currentSoundMode == MODE_SIMPLE) {
     inWaveformMod.begin(WAVEFORM_SAWTOOTH);
-    inWaveformMod.amplitude(1.0);
+    inWaveformMod.amplitude(0.5);
     modeSelect.gain(0, 1.0);
   }
 
   // Soft
   if (currentSoundMode == MODE_SOFT) {
     inWaveformMod.begin(WAVEFORM_SINE);
-    inWaveformMod.amplitude(1.0);
+    inWaveformMod.amplitude(0.5);
     modeSelect.gain(0, 1.0);
   }
 
@@ -606,9 +606,9 @@ void modeSelectionCode() {
   // Chord
   if (currentSoundMode == MODE_CHORD) {
     inWaveformMod.begin(WAVEFORM_SINE);
-    inWaveformMod.amplitude(0.33);
-    chord2wave.amplitude(0.33);
-    chord3wave.amplitude(0.33);
+    inWaveformMod.amplitude(0.33 / 2);
+    chord2wave.amplitude(0.33 / 2);
+    chord3wave.amplitude(0.33 / 2);
     modeSelect.gain(2, 1.0);
 
   } else {
