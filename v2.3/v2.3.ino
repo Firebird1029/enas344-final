@@ -74,26 +74,30 @@ AudioEffectdelayLoop tempDelay;  // xy=607,182
 AudioEffectdelayLoop fullDelay;  // xy=868,201
 
 // GUItool: begin automatically generated code
-AudioSynthWaveformDc chipDC;                // xy=55,613
-AudioSynthWaveform chord2fm;                // xy=59,499
-AudioSynthWaveform chord3fm;                // xy=60,539
+AudioSynthWaveformDc chipDC;                // xy=55.5,613
+AudioSynthWaveform chord2fm;                // xy=59.5,499
+AudioSynthWaveform chord3fm;                // xy=60.5,539
 AudioSynthSimpleDrum drumSynth;             // xy=64.5,167
-AudioSynthWaveform inWaveformFM;            // xy=77,401
+AudioSynthWaveform inWaveformFM;            // xy=77.5,401
+AudioSynthWaveformDc inRamp;                // xy=120,298
 AudioSynthWaveformModulated inWaveformMod;  // xy=191.5,452
-AudioSynthWaveformModulated chipWave;       // xy=196,620
-AudioSynthWaveformModulated chord3wave;     // xy=201,545
-AudioSynthWaveformModulated chord2wave;     // xy=205,506
-AudioMixer4 modeSelect;                     // xy=219,80
+AudioSynthWaveformModulated chipWave;       // xy=196.5,620
+AudioSynthWaveformModulated chord3wave;     // xy=201.5,545
+AudioSynthWaveformModulated chord2wave;     // xy=205.5,506
+AudioMixer4 modeSelect;                     // xy=219.5,80
+AudioEffectMultiply multiply1;              // xy=252,325
 AudioMixer4 inMixer;                        // xy=335.5,177
-AudioEffectEnvelope chipEnv;                // xy=335,620
-AudioEffectEnvelope chord3env;              // xy=351,545
-AudioEffectEnvelope chord2env;              // xy=353,506
+AudioEffectEnvelope chipEnv;                // xy=335.5,620
+AudioEffectEnvelope chord3env;              // xy=351.5,545
+AudioEffectEnvelope chord2env;              // xy=353.5,506
 AudioEffectEnvelope inEnvelope;             // xy=363.5,453
 AudioMixer4 tempDelayMixer;                 // xy=457.5,302
-AudioMixer4 chordMixer;                     // xy=528,502
+AudioMixer4 chordMixer;                     // xy=528.5,502
 // AudioEffectDelay         tempDelay;      //xy=607.5,182
+AudioSynthWaveformDc fullRamp;             // xy=641,313
 AudioSynthWaveformSine outLadderFreqSine;  // xy=681.5,89
 AudioMixer4 outMixer;                      // xy=712.5,35
+AudioEffectMultiply multiply2;             // xy=770,336
 AudioMixer4 fullDelayMixer;                // xy=844.5,211
 AudioFilterLadder outLadder;               // xy=880.5,30
 // AudioEffectDelay         fullDelay;      //xy=1022.5,193
@@ -104,30 +108,34 @@ AudioConnection patchCord3(chord3fm, 0, chord3wave, 0);
 AudioConnection patchCord4(drumSynth, 0, inMixer, 1);
 AudioConnection patchCord5(drumSynth, 0, modeSelect, 3);
 AudioConnection patchCord6(inWaveformFM, 0, inWaveformMod, 0);
-AudioConnection patchCord7(inWaveformMod, inEnvelope);
-AudioConnection patchCord8(chipWave, chipEnv);
-AudioConnection patchCord9(chord3wave, chord3env);
-AudioConnection patchCord10(chord2wave, chord2env);
-AudioConnection patchCord11(modeSelect, 0, inMixer, 0);
-AudioConnection patchCord12(inMixer, 0, tempDelayMixer, 1);
-AudioConnection patchCord13(inMixer, 0, outMixer, 0);
-AudioConnection patchCord14(chipEnv, 0, modeSelect, 1);
-AudioConnection patchCord15(chord3env, 0, chordMixer, 2);
-AudioConnection patchCord16(chord2env, 0, chordMixer, 1);
-AudioConnection patchCord17(inEnvelope, 0, modeSelect, 0);
-AudioConnection patchCord18(inEnvelope, 0, chordMixer, 0);
-AudioConnection patchCord19(tempDelayMixer, tempDelay);
-AudioConnection patchCord20(chordMixer, 0, modeSelect, 2);
-AudioConnection patchCord21(tempDelay, 0, tempDelayMixer, 0);
-AudioConnection patchCord22(tempDelay, 0, outMixer, 2);
-AudioConnection patchCord23(tempDelay, 0, fullDelayMixer, 1);
-AudioConnection patchCord24(outLadderFreqSine, 0, outLadder, 1);
-AudioConnection patchCord25(outMixer, 0, outLadder, 0);
-AudioConnection patchCord26(fullDelayMixer, fullDelay);
-AudioConnection patchCord27(outLadder, 0, i2s1, 0);
-AudioConnection patchCord28(outLadder, 0, i2s1, 1);
-AudioConnection patchCord29(fullDelay, 0, fullDelayMixer, 0);
-AudioConnection patchCord30(fullDelay, 0, outMixer, 1);
+AudioConnection patchCord7(inRamp, 0, multiply1, 0);
+AudioConnection patchCord8(inWaveformMod, inEnvelope);
+AudioConnection patchCord9(chipWave, chipEnv);
+AudioConnection patchCord10(chord3wave, chord3env);
+AudioConnection patchCord11(chord2wave, chord2env);
+AudioConnection patchCord12(modeSelect, 0, inMixer, 0);
+AudioConnection patchCord13(multiply1, 0, tempDelayMixer, 1);
+AudioConnection patchCord14(inMixer, 0, outMixer, 0);
+AudioConnection patchCord15(inMixer, 0, multiply1, 1);
+AudioConnection patchCord16(chipEnv, 0, modeSelect, 1);
+AudioConnection patchCord17(chord3env, 0, chordMixer, 2);
+AudioConnection patchCord18(chord2env, 0, chordMixer, 1);
+AudioConnection patchCord19(inEnvelope, 0, modeSelect, 0);
+AudioConnection patchCord20(inEnvelope, 0, chordMixer, 0);
+AudioConnection patchCord21(tempDelayMixer, tempDelay);
+AudioConnection patchCord22(chordMixer, 0, modeSelect, 2);
+AudioConnection patchCord23(tempDelay, 0, tempDelayMixer, 0);
+AudioConnection patchCord24(tempDelay, 0, outMixer, 2);
+AudioConnection patchCord25(tempDelay, 0, multiply2, 1);
+AudioConnection patchCord26(fullRamp, 0, multiply2, 0);
+AudioConnection patchCord27(outLadderFreqSine, 0, outLadder, 1);
+AudioConnection patchCord28(outMixer, 0, outLadder, 0);
+AudioConnection patchCord29(multiply2, 0, fullDelayMixer, 1);
+AudioConnection patchCord30(fullDelayMixer, fullDelay);
+AudioConnection patchCord31(outLadder, 0, i2s1, 0);
+AudioConnection patchCord32(outLadder, 0, i2s1, 1);
+AudioConnection patchCord33(fullDelay, 0, fullDelayMixer, 0);
+AudioConnection patchCord34(fullDelay, 0, outMixer, 1);
 AudioControlSGTL5000 sgtl5000_1;  // xy=64.5,20
 // GUItool: end automatically generated code
 
@@ -244,7 +252,7 @@ void setup(void) {
   Serial.println("Serial started");
 
   // AUDIO SETUP
-  AudioMemory(20);
+  AudioMemory(500);
   sgtl5000_1.enable();
   sgtl5000_1.volume(MASTER_VOLUME);
 
@@ -312,6 +320,10 @@ void setup(void) {
   tempDelayMixer.gain(1, 0.0);  // inMixer
   fullDelayMixer.gain(0, 1.0);  // feedback
   fullDelayMixer.gain(1, 0.0);  // temp mixer
+
+  // Amplitude Ramping
+  inRamp.amplitude(0.0);
+  fullRamp.amplitude(0.0);
 
   // Output
   outMixer.gain(0, 1.0);  // realtime dry input
@@ -751,6 +763,8 @@ void loopRecordingCode() {
       Serial.println("Loop button pressed");
       // send the synth signal into the delay loop
       tempDelayMixer.gain(1, 1.0);
+      inRamp.amplitude(1.0, 50);
+
       // comment this line if you don't want to clear the loop when you record
       // new material
       tempDelayMixer.gain(0, 0.0);
@@ -767,7 +781,9 @@ void loopRecordingCode() {
     if (timer >= (tempRecordingStart + LOOP_TIME)) {
       Serial.println("Recording stopped");
       // turn off the signal into the delay loop
-      tempDelayMixer.gain(1, 0.0);
+      // tempDelayMixer.gain(1, 0.0);
+      inRamp.amplitude(0.0, 50);
+
       // resets the feedback to 1.0 so the loop repeats indefinitely
       tempDelayMixer.gain(0, 1.0);
 
@@ -783,6 +799,7 @@ void loopRecordingCode() {
       Serial.println("SAVE pitch detected");
       // enable temp delay signal into full delay
       fullDelayMixer.gain(1, 1.0);
+      fullRamp.amplitude(1.0, 50);
 
       commitRecordingStart = timer;
       recordingState = COMMITTING;
@@ -803,7 +820,8 @@ void loopRecordingCode() {
       outMixer.gain(2, 0.0);  // disable temp delay, fixes double timbre glitch
 
       // disable temp delay signal into full delay
-      fullDelayMixer.gain(1, 0.0);
+      // fullDelayMixer.gain(1, 0.0);
+      fullRamp.amplitude(0.0, 50);
 
       // disable temp delay signal feedback
       tempDelayMixer.gain(0, 0.0);
