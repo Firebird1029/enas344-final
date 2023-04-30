@@ -864,10 +864,12 @@ void menuCode() {
   displayMenuPrefix(MENU_METRONOME);
   display.print("Metronome: ");
   if (metronomeSpeed == 0) {
-    display.println("Off");
+    display.print("Off  ");
   } else {
-    display.println(metronomeSpeed);
+    display.print(metronomeSpeed);
+    display.print("    ");
   }
+  display.println(recordingState == READY_FOR_RECORD ? " " : "*");
 
   // Clear Loop
   displayMenuPrefix(MENU_CLEAR);
