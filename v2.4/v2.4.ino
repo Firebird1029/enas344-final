@@ -22,7 +22,7 @@
 // menu encoder sensitivity (how many encoder steps per menu item)
 #define MES 10
 
-#define BASE_FREQ 440.0
+#define BASE_FREQ 349.23  // F4
 #define CHIPTUNE_FREQ_MOD 6.0
 #define CHIPTUNE_AMP_PER_SEMITONE (1.f / (CHIPTUNE_FREQ_MOD * 12))
 #define DELAYLINE_MAX_LEN 441000  // 44100 samples/sec * 10 sec
