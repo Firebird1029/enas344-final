@@ -26,7 +26,7 @@
 #define CHIPTUNE_FREQ_MOD 6.0
 #define CHIPTUNE_AMP_PER_SEMITONE (1.f / (CHIPTUNE_FREQ_MOD * 12))
 #define DELAYLINE_MAX_LEN 441000  // 44100 samples/sec * 10 sec
-#define RIBBON_POT_CHECK_RATE 10  // lower rate = faster rate
+#define RIBBON_POT_CHECK_RATE 5   // lower rate = faster rate
 
 // PINOUT
 
@@ -92,6 +92,7 @@ AudioEffectEnvelope chipEnv;                // xy=335.5,620
 AudioEffectEnvelope chord3env;              // xy=351.5,545
 AudioEffectEnvelope chord2env;              // xy=353.5,506
 AudioEffectEnvelope inEnvelope;             // xy=363.5,453
+AudioSynthSimpleDrum metronome;             // xy=448,39
 AudioMixer4 tempDelayMixer;                 // xy=457.5,302
 AudioMixer4 chordMixer;                     // xy=528.5,502
 // AudioEffectDelay         tempDelay;      //xy=607.5,182
@@ -123,20 +124,21 @@ AudioConnection patchCord17(chord3env, 0, chordMixer, 2);
 AudioConnection patchCord18(chord2env, 0, chordMixer, 1);
 AudioConnection patchCord19(inEnvelope, 0, modeSelect, 0);
 AudioConnection patchCord20(inEnvelope, 0, chordMixer, 0);
-AudioConnection patchCord21(tempDelayMixer, tempDelay);
-AudioConnection patchCord22(chordMixer, 0, modeSelect, 2);
-AudioConnection patchCord23(tempDelay, 0, tempDelayMixer, 0);
-AudioConnection patchCord24(tempDelay, 0, outMixer, 2);
-AudioConnection patchCord25(tempDelay, 0, multiply2, 1);
-AudioConnection patchCord26(fullRamp, 0, multiply2, 0);
-AudioConnection patchCord27(outLadderFreqSine, 0, outLadder, 1);
-AudioConnection patchCord28(outMixer, 0, outLadder, 0);
-AudioConnection patchCord29(multiply2, 0, fullDelayMixer, 1);
-AudioConnection patchCord30(fullDelayMixer, fullDelay);
-AudioConnection patchCord31(outLadder, 0, i2s1, 0);
-AudioConnection patchCord32(outLadder, 0, i2s1, 1);
-AudioConnection patchCord33(fullDelay, 0, fullDelayMixer, 0);
-AudioConnection patchCord34(fullDelay, 0, outMixer, 1);
+AudioConnection patchCord21(metronome, 0, outMixer, 3);
+AudioConnection patchCord22(tempDelayMixer, tempDelay);
+AudioConnection patchCord23(chordMixer, 0, modeSelect, 2);
+AudioConnection patchCord24(tempDelay, 0, tempDelayMixer, 0);
+AudioConnection patchCord25(tempDelay, 0, outMixer, 2);
+AudioConnection patchCord26(tempDelay, 0, multiply2, 1);
+AudioConnection patchCord27(fullRamp, 0, multiply2, 0);
+AudioConnection patchCord28(outLadderFreqSine, 0, outLadder, 1);
+AudioConnection patchCord29(outMixer, 0, outLadder, 0);
+AudioConnection patchCord30(multiply2, 0, fullDelayMixer, 1);
+AudioConnection patchCord31(fullDelayMixer, fullDelay);
+AudioConnection patchCord32(outLadder, 0, i2s1, 0);
+AudioConnection patchCord33(outLadder, 0, i2s1, 1);
+AudioConnection patchCord34(fullDelay, 0, fullDelayMixer, 0);
+AudioConnection patchCord35(fullDelay, 0, outMixer, 1);
 AudioControlSGTL5000 sgtl5000_1;  // xy=64.5,20
 // GUItool: end automatically generated code
 
@@ -198,11 +200,15 @@ int *ARPEGGIOS[ARPEGGIO_COUNT] = {ARPEGGIO_1};
 int currentArpeggio = 0, curArpNoteIdx = 0;
 long unsigned int nextArpNoteTime = 0;
 
+int metronomeSpeed = 0;  // 0 = off, 1 = tick at quarter note rate, 2 = tick at
+                         // eighth note rate, 3 = tick at triplet rate, etc.
+
 // GLOBAL - GENERAL
 
 elapsedMillis timer;  // master timer (auto-incrementing)
 
 long unsigned int lastCheckedRibbonPot = 0,  // last time ribbon pot was checked
+    lastMetronomeTick = 0,                   // last time metronome ticked
     tempRecordingStart =
         0,  // timestamp when recording started (recording into temp delay)
     commitRecordingStart =
@@ -236,8 +242,8 @@ enum MENU_STATE {
   MENU_VOLUME,
   MENU_CLEAR,
   MENU_POWER,
-  MENU_START_LOOP
-};  // MENU_POWER, MENU_START_LOOP unused TODO
+  MENU_METRONOME
+};  // MENU_POWER unused TODO
 enum MENU_ACTIVE { MENU_INACTIVE, MENU_ACTIVE_OPTION };
 MENU_STATE menuState = MENU_MODE;
 MENU_ACTIVE menuActiveState = MENU_INACTIVE;
@@ -308,6 +314,12 @@ void setup(void) {
   drumSynth.secondMix(0.0);
   drumSynth.pitchMod(0.55);
 
+  // Metronome
+  metronome.frequency(4000);
+  metronome.length(50);
+  metronome.secondMix(0.0);
+  metronome.pitchMod(0.5);
+
   // Mode Selection
   modeSelect.gain(0, 1.0);  // simple/soft
   modeSelect.gain(1, 0.0);  // chiptune
@@ -332,6 +344,7 @@ void setup(void) {
                 0.0);  // full delay -- set to 0.0 to avoid initial random noise
   outMixer.gain(2,
                 0.0);  // temp delay -- set to 0.0 to avoid initial random noise
+  outMixer.gain(3, 1.0);  // metronome
   outLadderFreqSine.frequency(10);
   outLadderFreqSine.amplitude(0);
   outLadder.frequency(100000);
@@ -431,6 +444,9 @@ void loop() {
     drumSynth.noteOn();
   }
 
+  // METRONOME
+  metronomeCode();
+
   // MENU
   menuCode();
 
@@ -475,7 +491,7 @@ void ribbonPotCode() {
   if (timer >= lastCheckedRibbonPot + RIBBON_POT_CHECK_RATE) {
     lastCheckedRibbonPot = timer;
 
-    mappedRibbonPotVal = mapScale(MAJOR, getRibbonPotValAndMap(0, 8));
+    mappedRibbonPotVal = mapScale(MINOR, getRibbonPotValAndMap(0, 8));
     // Serial.println(mappedRibbonPotVal);
 
     if (mappedRibbonPotVal > -1) {
@@ -577,6 +593,23 @@ void chiptuneCode() {
   }
 }
 
+// METRONOME CODE
+
+void metronomeCode() {
+  if (metronomeSpeed > 0) {
+    if (timer >= lastMetronomeTick + (LOOP_TIME / (metronomeSpeed * 4))) {
+      lastMetronomeTick = timer;
+
+      // theoretically reduces metronome drift,
+      // but doesn't work if metronome can be turned off
+      // lastMetronomeTick = lastMetronomeTick + (LOOP_TIME / (metronomeSpeed *
+      // 4));
+
+      metronome.noteOn();
+    }
+  }
+}
+
 // MODE SELECTION CODE
 
 void modeSelectionCode() {
@@ -628,7 +661,7 @@ void menuCode() {
     // encoder toggles through menu options
     // TODO switch to programmatic way (non if statements)
     if (encValue >= 0 && encValue < MES) {
-      menuState = MENU_START_LOOP;  // TODO replace with IMU
+      menuState = MENU_METRONOME;
     } else if (encValue >= MES && encValue < 2 * MES) {
       menuState = MENU_CLEAR;
     } else if (encValue >= 2 * MES && encValue < 3 * MES) {
@@ -655,8 +688,7 @@ void menuCode() {
             NUM_MODE_OPTIONS;
         enc.write(0);
       }
-    }
-    if (menuState == MENU_VOLUME) {
+    } else if (menuState == MENU_VOLUME) {
       // encoder adjusts volume
       clientMasterVolume += (int)(encValue / (int)(MES / 5));
       if (clientMasterVolume < 0) {
@@ -671,6 +703,16 @@ void menuCode() {
       }
 
       enc.write(0);
+    } else if (menuState == MENU_METRONOME) {
+      // encoder adjusts metronome speed
+      metronomeSpeed = (int)(encValue / (int)(MES));
+      if (metronomeSpeed < 0) {
+        metronomeSpeed = 0;
+        enc.write(0);
+      } else if (metronomeSpeed > 6) {
+        metronomeSpeed = 6;
+        enc.write(MES * 6);
+      }
     }
   }
 
@@ -682,43 +724,32 @@ void menuCode() {
       // change to active option state
 
       // special exceptions, substate-less menu options
-      if (menuState == MENU_START_LOOP || menuState == MENU_CLEAR) {
+      if (menuState == MENU_CLEAR) {
         if (menuState == MENU_CLEAR) {
           // clear loops -- TODO add double clear
           tempDelay.clear();
           fullDelay.clear();
         }
 
-        // TODO remove MENU_START_LOOP later
-        // if (menuState == MENU_START_LOOP) {
-        //   // startLoop();
-        //   if (!isRecordingLoop && !isCommittingLoop) {
-        //     // to prevent race conditions, do not allow recording a loop if
-        //     in
-        //     // the middle of committing a loop
-        //     Serial.println("Loop button pressed");
-        //     // send the synth signal into the delay loop
-        //     tempDelayMixer.gain(1, 1.0);
-        //     // comment this line if you don't want to clear the loop when you
-        //     // record new material
-        //     tempDelayMixer.gain(0, 0.0);
-
-        //     outMixer.gain(2, 0.0);  // disable temp delay
-
-        //     tempRecordingStart = timer;
-        //     isRecordingLoop = true;
-        //   }
-        // }
       } else {
         savedEncValue = encValue;
-        enc.write(0);
         menuActiveState = MENU_ACTIVE_OPTION;
+
+        // reset encoder value
+        enc.write(0);
+
+        // special exceptions
+        if (menuState == MENU_METRONOME) {
+          enc.write(MES * metronomeSpeed);
+        }
       }
     } else {
       // change to inactive (main menu) state
       encValue = savedEncValue;
-      enc.write(encValue);
       menuActiveState = MENU_INACTIVE;
+
+      // restore menu navigation scroll position
+      enc.write(encValue);
     }
   }
 
@@ -726,10 +757,14 @@ void menuCode() {
   display.setCursor(0, 0);
   // display.println(encValue);
 
-  // Start Loop Recording
-  // TODO remove later
-  displayMenuPrefix(MENU_START_LOOP);
-  display.println("Start Loop");
+  // Metronome
+  displayMenuPrefix(MENU_METRONOME);
+  display.print("Metronome: ");
+  if (metronomeSpeed == 0) {
+    display.println("Off");
+  } else {
+    display.println(metronomeSpeed);
+  }
 
   // Clear Loop
   displayMenuPrefix(MENU_CLEAR);
