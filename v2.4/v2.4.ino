@@ -220,6 +220,10 @@ const char *SD_PERC[] = {"00_kick2.raw",      "01_snare.raw",
 
 elapsedMillis timer;  // master timer (auto-incrementing)
 
+// home = OLED + encoder, playing = softpot, other = opposite of OLED + encoder
+enum ORIENTATION { HOME, PLAYING, OTHER };
+ORIENTATION orientation = HOME;
+
 long unsigned int lastCheckedRibbonPot = 0,  // last time ribbon pot was checked
     lastMetronomeTick = 0,                   // last time metronome ticked
     tempRecordingStart =
@@ -327,7 +331,7 @@ void setup(void) {
   drumSynth.secondMix(0.0);
   drumSynth.pitchMod(0.55);
   drumMixer.gain(0, 0.5);  // drum synth
-  drumMixer.gain(1, 0.5);  // sd sample reader 1
+  drumMixer.gain(1, 0.8);  // sd sample reader 1
   // ! using more than one sd read is buggy so sdDrum2 and sdDrum3 are unused
   drumMixer.gain(2, 0.0);  // sd sample reader 2
   drumMixer.gain(3, 0.0);  // sd sample reader 3
@@ -439,6 +443,7 @@ void setup(void) {
 
 void loop() {
   // MOTION CODE -- Read motion data
+  // This comes first to determine orientation
   motionCode();
 
   // ladder1.frequency(abs(pitch * 1000 + 500));
@@ -464,7 +469,7 @@ void loop() {
   inWaveformFM.amplitude(mapFloat(abs(roll), 0, 0.5, 0, 0.1));
 
   // QUICK PERCUSSION
-  if (abs(accelz) > 19.0 && abs(pitch) < 0.1) {
+  if (abs(accelz) > 19.0 && orientation == PLAYING) {
     // a shake up/down usually goes up to 19.0
     // TODO change to change in accel
     Serial.println(accelz);
@@ -512,6 +517,15 @@ void motionCode() {
           (1 - MOTION_ALPHA) * accelPitch;  // final pitch value
   roll = -MOTION_ALPHA * (roll + rollDot * 0.01) -
          (1 - MOTION_ALPHA) * accelRoll;  // final roll value
+
+  // ranges from -1.5 to 1.5
+  if (abs(pitch) < 0.75) {
+    orientation = PLAYING;
+  } else if (pitch <= -0.75) {
+    orientation = HOME;
+  } else {
+    orientation = OTHER;
+  }
 }
 
 // RIBBON POT CODE
@@ -822,7 +836,6 @@ void menuCode() {
   // Encoder Button: Change Active State
   encButton.update();
   if (encButton.pressed()) {
-    Serial.println("Encoder button pressed");
     if (menuActiveState == MENU_INACTIVE) {
       // change to active option state
 
@@ -905,7 +918,7 @@ void displayMenuPrefix(int ms) {
 void loopRecordingCode() {
   // START RECORDING
   if (recordingState == READY_FOR_RECORD) {
-    if (pitch < 0.1 && pitch > -0.1) {
+    if (orientation == PLAYING) {
       // to prevent race conditions, do not allow recording a loop if in the
       // middle of committing a loop
       Serial.println("STARTING LOOP RECORDING");
