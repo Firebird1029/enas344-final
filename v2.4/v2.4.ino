@@ -26,6 +26,7 @@
 #define CHIPTUNE_FREQ_MOD 6.0
 #define CHIPTUNE_AMP_PER_SEMITONE (1.f / (CHIPTUNE_FREQ_MOD * 12))
 #define DELAYLINE_MAX_LEN 441000  // 44100 samples/sec * 10 sec
+#define RIBBON_POT_CHECK_RATE 10  // lower rate = faster rate
 
 // PINOUT
 
@@ -201,7 +202,7 @@ long unsigned int nextArpNoteTime = 0;
 
 elapsedMillis timer;  // master timer (auto-incrementing)
 
-long unsigned int
+long unsigned int lastCheckedRibbonPot = 0,  // last time ribbon pot was checked
     tempRecordingStart =
         0,  // timestamp when recording started (recording into temp delay)
     commitRecordingStart =
@@ -432,7 +433,7 @@ void loop() {
   // MENU
   menuCode();
 
-  delay(10);  // prevents ramp down bug, switch to timer instead of delay later
+  delay(1);
 }
 
 // MOTION CODE
@@ -469,36 +470,42 @@ void motionCode() {
 // RIBBON POT CODE
 
 void ribbonPotCode() {
-  mappedRibbonPotVal = mapScale(MAJOR, getRibbonPotValAndMap(0, 8));
-  // Serial.println(mappedRibbonPotVal);
+  // only check ribbon pot for updates as fast as RIBBON_POT_CHECK_RATE
+  if (timer >= lastCheckedRibbonPot + RIBBON_POT_CHECK_RATE) {
+    lastCheckedRibbonPot = timer;
 
-  if (mappedRibbonPotVal > -1) {
-    // ribbon pressed
-    inWaveformMod.frequency(BASE_FREQ * pow(2, mappedRibbonPotVal / 12.0));
-    chipWave.frequency(BASE_FREQ * pow(2, mappedRibbonPotVal / 12.0));
-    // TODO ask Konrad about chord2wave major vs. minor at some point
-    chord2wave.frequency(BASE_FREQ * pow(2, (mappedRibbonPotVal + 4) / 12.0));
-    chord3wave.frequency(BASE_FREQ * pow(2, (mappedRibbonPotVal + 7) / 12.0));
+    mappedRibbonPotVal = mapScale(MAJOR, getRibbonPotValAndMap(0, 8));
+    // Serial.println(mappedRibbonPotVal);
 
-    if (curSustainStatus) {
-      // sustain note
+    if (mappedRibbonPotVal > -1) {
+      // ribbon pressed
+      inWaveformMod.frequency(BASE_FREQ * pow(2, mappedRibbonPotVal / 12.0));
+      chipWave.frequency(BASE_FREQ * pow(2, mappedRibbonPotVal / 12.0));
+      // TODO ask Konrad about chord2wave major vs. minor at some point -- FIX
+      // TO SET SEMITONES
+      chord2wave.frequency(BASE_FREQ * pow(2, (mappedRibbonPotVal + 4) / 12.0));
+      chord3wave.frequency(BASE_FREQ * pow(2, (mappedRibbonPotVal + 7) / 12.0));
+
+      if (curSustainStatus) {
+        // sustain note
+      } else {
+        // note on
+        inEnvelope.noteOn();
+        chipEnv.noteOn();
+        chord2env.noteOn();
+        chord3env.noteOn();
+        curSustainStatus = true;
+      }
     } else {
-      // note on
-      inEnvelope.noteOn();
-      chipEnv.noteOn();
-      chord2env.noteOn();
-      chord3env.noteOn();
-      curSustainStatus = true;
-    }
-  } else {
-    // inWaveformMod.amplitude(0);
-    if (curSustainStatus) {
-      // note off
-      inEnvelope.noteOff();
-      chipEnv.noteOff();
-      chord2env.noteOff();
-      chord3env.noteOff();
-      curSustainStatus = false;
+      // inWaveformMod.amplitude(0);
+      if (curSustainStatus) {
+        // note off
+        inEnvelope.noteOff();
+        chipEnv.noteOff();
+        chord2env.noteOff();
+        chord3env.noteOff();
+        curSustainStatus = false;
+      }
     }
   }
 }
