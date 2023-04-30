@@ -75,20 +75,21 @@ AudioEffectdelayLoop tempDelay;  // xy=607,182
 AudioEffectdelayLoop fullDelay;  // xy=868,201
 
 // GUItool: begin automatically generated code
-AudioSynthWaveformDc chipDC;                // xy=55.5,613
+AudioSynthWaveformDc chipDC;                // xy=55,583
 AudioSynthWaveform chord2fm;                // xy=59.5,499
 AudioSynthWaveform chord3fm;                // xy=60.5,539
-AudioSynthSimpleDrum drumSynth;             // xy=64.5,167
+AudioSynthSimpleDrum drumSynth;             // xy=64,167
+AudioPlaySdRaw sdDrumSynth;                 // xy=72.5,207
 AudioSynthWaveform inWaveformFM;            // xy=77.5,401
 AudioSynthWaveformDc inRamp;                // xy=120,298
 AudioSynthWaveformModulated inWaveformMod;  // xy=191.5,452
-AudioSynthWaveformModulated chipWave;       // xy=196.5,620
+AudioSynthWaveformModulated chipWave;       // xy=196,590
 AudioSynthWaveformModulated chord3wave;     // xy=201.5,545
 AudioSynthWaveformModulated chord2wave;     // xy=205.5,506
 AudioMixer4 modeSelect;                     // xy=219.5,80
 AudioEffectMultiply multiply1;              // xy=252,325
 AudioMixer4 inMixer;                        // xy=335.5,177
-AudioEffectEnvelope chipEnv;                // xy=335.5,620
+AudioEffectEnvelope chipEnv;                // xy=335,590
 AudioEffectEnvelope chord3env;              // xy=351.5,545
 AudioEffectEnvelope chord2env;              // xy=353.5,506
 AudioEffectEnvelope inEnvelope;             // xy=363.5,453
@@ -107,8 +108,8 @@ AudioOutputI2S i2s1;  // xy=1071.5,29
 AudioConnection patchCord1(chipDC, 0, chipWave, 0);
 AudioConnection patchCord2(chord2fm, 0, chord2wave, 0);
 AudioConnection patchCord3(chord3fm, 0, chord3wave, 0);
-AudioConnection patchCord4(drumSynth, 0, inMixer, 1);
-AudioConnection patchCord5(drumSynth, 0, modeSelect, 3);
+AudioConnection patchCord4(sdDrumSynth, 0, inMixer, 1);
+AudioConnection patchCord5(sdDrumSynth, 0, modeSelect, 3);
 AudioConnection patchCord6(inWaveformFM, 0, inWaveformMod, 0);
 AudioConnection patchCord7(inRamp, 0, multiply1, 0);
 AudioConnection patchCord8(inWaveformMod, inEnvelope);
@@ -202,6 +203,11 @@ long unsigned int nextArpNoteTime = 0;
 
 int metronomeSpeed = 0;  // 0 = off, 1 = tick at quarter note rate, 2 = tick at
                          // eighth note rate, 3 = tick at triplet rate, etc.
+
+const char *SD_PERC[] = {"00_kick2.raw",      "01_snare.raw",
+                         "02_tom_low.raw",    "04_tom_high.raw",
+                         "05_hihat_open.raw", "06_hihat_closed.raw",
+                         "07_rim.raw",        "08_shaker.raw"};
 
 // GLOBAL - GENERAL
 
@@ -372,7 +378,7 @@ void setup(void) {
   Serial.println("Initializing MPU6050...");
   if (!mpu.begin()) {
     Serial.println("ERROR: Failed to find MPU6050 chip!");
-    while (1) {
+    while (true) {
       delay(10);
     }
   }
@@ -386,7 +392,7 @@ void setup(void) {
   if (!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
     Serial.println(F("SSD1306 allocation failed"));
     while (true) {
-      delay(1);
+      delay(10);
     }
   }
   display.display();
@@ -394,6 +400,15 @@ void setup(void) {
   display.clearDisplay();
   display.setTextColor(SSD1306_WHITE);
   display.setTextSize(1);
+
+  // SD SETUP
+  // uses SD port on Teensy 4.1, NOT the SD reader on audio shield
+  if (!SD.begin(BUILTIN_SDCARD)) {
+    Serial.println("Unable to access SD Card");
+    while (true) {
+      delay(10);
+    }
+  }
 
   // DELAY LINES
   tempDelay.begin(DELAY_LINE_TEMP, DELAYLINE_MAX_LEN);
@@ -441,7 +456,10 @@ void loop() {
     // a shake up/down usually goes up to 19.0
     // TODO change to change in accel
     Serial.println(accelz);
-    drumSynth.noteOn();
+    // drumSynth.noteOn();
+    if (!sdDrumSynth.isPlaying()) {
+      sdDrumSynth.play(SD_PERC[0]);
+    }
   }
 
   // METRONOME
