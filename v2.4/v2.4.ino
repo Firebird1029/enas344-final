@@ -28,6 +28,12 @@
 #define DELAYLINE_MAX_LEN 441000  // 44100 samples/sec * 10 sec
 #define RIBBON_POT_CHECK_RATE 5   // lower rate = faster rate
 
+#define DEFAULT_ENV_ATTACK 10.5
+#define DEFAULT_ENV_HOLD 2.5
+#define DEFAULT_ENV_DECAY 35
+#define DEFAULT_ENV_SUSTAIN 0.8
+#define DEFAULT_ENV_RELEASE 300
+
 // PINOUT
 
 #define ENCODER_DT_PIN 3
@@ -106,8 +112,9 @@ AudioMixer4 outMixer;                      // xy=712.5,35
 AudioEffectMultiply multiply2;             // xy=770,336
 AudioMixer4 fullDelayMixer;                // xy=844.5,211
 AudioFilterLadder outLadder;               // xy=880.5,30
+AudioAmplifier outAmp;                     // xy=997,75
 // AudioEffectDelay         fullDelay;      //xy=1022.5,193
-AudioOutputI2S i2s1;  // xy=1071.5,29
+AudioOutputI2S i2s1;  // xy=1120.5,31
 AudioConnection patchCord1(chipDC, 0, chipWave, 0);
 AudioConnection patchCord2(sdDrum1, 0, drumMixer, 1);
 AudioConnection patchCord3(sdDrum2, 0, drumMixer, 2);
@@ -143,10 +150,11 @@ AudioConnection patchCord32(outLadderFreqSine, 0, outLadder, 1);
 AudioConnection patchCord33(outMixer, 0, outLadder, 0);
 AudioConnection patchCord34(multiply2, 0, fullDelayMixer, 1);
 AudioConnection patchCord35(fullDelayMixer, fullDelay);
-AudioConnection patchCord36(outLadder, 0, i2s1, 0);
-AudioConnection patchCord37(outLadder, 0, i2s1, 1);
-AudioConnection patchCord38(fullDelay, 0, fullDelayMixer, 0);
-AudioConnection patchCord39(fullDelay, 0, outMixer, 1);
+AudioConnection patchCord36(outLadder, outAmp);
+AudioConnection patchCord37(outAmp, 0, i2s1, 0);
+AudioConnection patchCord38(outAmp, 0, i2s1, 1);
+AudioConnection patchCord39(fullDelay, 0, fullDelayMixer, 0);
+AudioConnection patchCord40(fullDelay, 0, outMixer, 1);
 AudioControlSGTL5000 sgtl5000_1;  // xy=64.5,20
 // GUItool: end automatically generated code
 
@@ -223,6 +231,7 @@ elapsedMillis timer;  // master timer (auto-incrementing)
 // home = OLED + encoder, playing = softpot, other = opposite of OLED + encoder
 enum ORIENTATION { HOME, PLAYING, OTHER };
 ORIENTATION orientation = HOME;
+ORIENTATION lastOrientation = HOME;
 
 long unsigned int lastCheckedRibbonPot = 0,  // last time ribbon pot was checked
     lastMetronomeTick = 0,                   // last time metronome ticked
@@ -254,13 +263,7 @@ enum MODE_STATE {
   MODE_PERCUSSION
 };
 
-enum MENU_STATE {
-  MENU_MODE,
-  MENU_VOLUME,
-  MENU_CLEAR,
-  MENU_POWER,
-  MENU_METRONOME
-};  // MENU_POWER unused TODO
+enum MENU_STATE { MENU_MODE, MENU_VOLUME, MENU_CLEAR, MENU_METRONOME };
 enum MENU_ACTIVE { MENU_INACTIVE, MENU_ACTIVE_OPTION };
 MENU_STATE menuState = MENU_MODE;
 MENU_ACTIVE menuActiveState = MENU_INACTIVE;
@@ -268,7 +271,9 @@ MENU_ACTIVE menuActiveState = MENU_INACTIVE;
 MODE_STATE currentSoundMode = MODE_SIMPLE;  // see MODE_OPTIONS
 int clientMasterVolume = 100,               // 0-100
     encValue,                               // current encoder value
-    savedEncValue;  // encValue of main menu (before entering active option)
+    savedEncValueMenu,  // encValue of main menu (before entering active option)
+    savedEncValueHome;  // encValue of menu (both main menu and active submenu)
+                        // before switching to playing mode
 
 void setup(void) {
   // SERIAL SETUP
@@ -284,42 +289,40 @@ void setup(void) {
   inWaveformFM.begin(0.0, 6, WAVEFORM_SINE);
   inWaveformMod.begin(0.5, BASE_FREQ, WAVEFORM_SAWTOOTH);
   inWaveformMod.frequencyModulation(1);
-  inEnvelope.attack(10.5);
-  inEnvelope.hold(2.5);
-  inEnvelope.decay(35);
-  inEnvelope.sustain(0.8);
-  inEnvelope.release(300);
+  inEnvelope.attack(DEFAULT_ENV_ATTACK);
+  inEnvelope.hold(DEFAULT_ENV_HOLD);
+  inEnvelope.decay(DEFAULT_ENV_DECAY);
+  inEnvelope.sustain(DEFAULT_ENV_SUSTAIN);
+  inEnvelope.release(DEFAULT_ENV_RELEASE);
 
   // Chiptune
   chipDC.amplitude(0);
   chipWave.begin(0.25, BASE_FREQ, WAVEFORM_BANDLIMIT_SQUARE);
   chipWave.frequencyModulation(CHIPTUNE_FREQ_MOD);
-  // TODO set to defines
-  chipEnv.attack(10.5);
-  chipEnv.hold(2.5);
-  chipEnv.decay(35);
-  chipEnv.sustain(0.8);
-  chipEnv.release(300);
+  chipEnv.attack(DEFAULT_ENV_ATTACK);
+  chipEnv.hold(DEFAULT_ENV_HOLD);
+  chipEnv.decay(DEFAULT_ENV_DECAY);
+  chipEnv.sustain(DEFAULT_ENV_SUSTAIN);
+  chipEnv.release(DEFAULT_ENV_RELEASE);
 
   // Chords -- copy & paste from Basic Synth
-  // TODO set to defines
   chord2fm.begin(0.0, 6, WAVEFORM_SINE);
   chord2wave.begin(0.5, BASE_FREQ, WAVEFORM_SINE);
   chord2wave.frequencyModulation(1);
-  chord2env.attack(10.5);
-  chord2env.hold(2.5);
-  chord2env.decay(35);
-  chord2env.sustain(0.8);
-  chord2env.release(300);
+  chord2env.attack(DEFAULT_ENV_ATTACK);
+  chord2env.hold(DEFAULT_ENV_HOLD);
+  chord2env.decay(DEFAULT_ENV_DECAY);
+  chord2env.sustain(DEFAULT_ENV_SUSTAIN);
+  chord2env.release(DEFAULT_ENV_RELEASE);
 
   chord3fm.begin(0.0, 6, WAVEFORM_SINE);
   chord3wave.begin(0.5, BASE_FREQ, WAVEFORM_SINE);
   chord3wave.frequencyModulation(1);
-  chord3env.attack(10.5);
-  chord3env.hold(2.5);
-  chord3env.decay(35);
-  chord3env.sustain(0.8);
-  chord3env.release(300);
+  chord3env.attack(DEFAULT_ENV_ATTACK);
+  chord3env.hold(DEFAULT_ENV_HOLD);
+  chord3env.decay(DEFAULT_ENV_DECAY);
+  chord3env.sustain(DEFAULT_ENV_SUSTAIN);
+  chord3env.release(DEFAULT_ENV_RELEASE);
 
   chordMixer.gain(0, 1.0);
   chordMixer.gain(1, 1.0);
@@ -371,6 +374,7 @@ void setup(void) {
   outLadderFreqSine.amplitude(0);
   outLadder.frequency(100000);
   outLadder.octaveControl(6);
+  outAmp.gain(1.0);
 
   // BUTTON SETUP
   // loopButton.attach(LOOP_BTN_PIN, INPUT_PULLUP);
@@ -483,7 +487,28 @@ void loop() {
   metronomeCode();
 
   // MENU
-  menuCode();
+  encValue = enc.read();
+  encButton.update();
+
+  if (orientation == HOME) {
+    if (lastOrientation == PLAYING) {
+      // restore old encoder value
+      encValue = savedEncValueHome;
+      enc.write(savedEncValueHome);
+      lastOrientation = HOME;
+    }
+
+    menuCode();
+  } else if (orientation == PLAYING) {
+    if (lastOrientation == HOME) {
+      // save encoder value
+      savedEncValueHome = encValue;
+      enc.write(0);
+      lastOrientation = PLAYING;
+    }
+
+    soundEffectsCode();
+  }
 
   delay(1);
 }
@@ -546,8 +571,7 @@ void ribbonPotCode() {
 
         inWaveformMod.frequency(BASE_FREQ * pow(2, mappedRibbonPotVal / 12.0));
         chipWave.frequency(BASE_FREQ * pow(2, mappedRibbonPotVal / 12.0));
-        // TODO ask Konrad about chord2wave major vs. minor at some point -- FIX
-        // TO SET SEMITONES
+        // TODO FIX SET TO SEMITONES
         chord2wave.frequency(BASE_FREQ *
                              pow(2, (mappedRibbonPotVal + 4) / 12.0));
         chord3wave.frequency(BASE_FREQ *
@@ -773,7 +797,6 @@ void modeSelectionCode() {
 
 void menuCode() {
   // Encoder: Menu Navigation
-  int encValue = enc.read();
   if (menuActiveState == MENU_INACTIVE) {
     // encoder toggles through menu options
     // TODO switch to programmatic way (non if statements)
@@ -815,9 +838,7 @@ void menuCode() {
       }
 
       // set volume
-      for (int i = 0; i < 4; i++) {
-        outMixer.gain(i, clientMasterVolume / 100.0);
-      }
+      outAmp.gain(clientMasterVolume / 100.0);
 
       enc.write(0);
     } else if (menuState == MENU_METRONOME) {
@@ -834,7 +855,6 @@ void menuCode() {
   }
 
   // Encoder Button: Change Active State
-  encButton.update();
   if (encButton.pressed()) {
     if (menuActiveState == MENU_INACTIVE) {
       // change to active option state
@@ -848,7 +868,7 @@ void menuCode() {
         }
 
       } else {
-        savedEncValue = encValue;
+        savedEncValueMenu = encValue;
         menuActiveState = MENU_ACTIVE_OPTION;
 
         // reset encoder value
@@ -861,7 +881,7 @@ void menuCode() {
       }
     } else {
       // change to inactive (main menu) state
-      encValue = savedEncValue;
+      encValue = savedEncValueMenu;
       menuActiveState = MENU_INACTIVE;
 
       // restore menu navigation scroll position
@@ -912,6 +932,12 @@ void displayMenuPrefix(int ms) {
     display.print(" ");
   }
   display.print(" ");
+}
+
+// SOUNDS EFFECTS CODE
+
+void soundEffectsCode() {
+  // TODO
 }
 
 // LOOP RECORDING CODE

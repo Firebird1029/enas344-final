@@ -30,8 +30,9 @@ AudioMixer4              outMixer;       //xy=712.5,35
 AudioEffectMultiply      multiply2;      //xy=770,336
 AudioMixer4              fullDelayMixer; //xy=844.5,211
 AudioFilterLadder        outLadder;      //xy=880.5,30
+AudioAmplifier           outAmp;           //xy=997,75
 AudioEffectDelay         fullDelay;      //xy=1022.5,193
-AudioOutputI2S           i2s1;           //xy=1071.5,29
+AudioOutputI2S           i2s1;           //xy=1120.5,31
 AudioConnection          patchCord1(chipDC, 0, chipWave, 0);
 AudioConnection          patchCord2(sdDrum1, 0, drumMixer, 1);
 AudioConnection          patchCord3(sdDrum2, 0, drumMixer, 2);
@@ -67,9 +68,10 @@ AudioConnection          patchCord32(outLadderFreqSine, 0, outLadder, 1);
 AudioConnection          patchCord33(outMixer, 0, outLadder, 0);
 AudioConnection          patchCord34(multiply2, 0, fullDelayMixer, 1);
 AudioConnection          patchCord35(fullDelayMixer, fullDelay);
-AudioConnection          patchCord36(outLadder, 0, i2s1, 0);
-AudioConnection          patchCord37(outLadder, 0, i2s1, 1);
-AudioConnection          patchCord38(fullDelay, 0, fullDelayMixer, 0);
-AudioConnection          patchCord39(fullDelay, 0, outMixer, 1);
+AudioConnection          patchCord36(outLadder, outAmp);
+AudioConnection          patchCord37(outAmp, 0, i2s1, 0);
+AudioConnection          patchCord38(outAmp, 0, i2s1, 1);
+AudioConnection          patchCord39(fullDelay, 0, fullDelayMixer, 0);
+AudioConnection          patchCord40(fullDelay, 0, outMixer, 1);
 AudioControlSGTL5000     sgtl5000_1;     //xy=64.5,20
 // GUItool: end automatically generated code
