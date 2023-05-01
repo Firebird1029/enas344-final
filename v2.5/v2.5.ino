@@ -25,7 +25,7 @@
 #define BASE_FREQ 349.23  // F4
 #define CHIPTUNE_FREQ_MOD 6.0
 #define CHIPTUNE_AMP_PER_SEMITONE (1.f / (CHIPTUNE_FREQ_MOD * 12))
-#define DELAYLINE_MAX_LEN 441000  // 44100 samples/sec * 10 sec
+#define DELAYLINE_MAX_LEN 132300  // (3 sec) 44100 samples/sec * 10 sec = 441000
 #define RIBBON_POT_CHECK_RATE 5   // lower rate = faster rate
 
 #define DEFAULT_ENV_ATTACK 10.5
@@ -196,12 +196,6 @@ AudioConnection patchCord59(delaySelect, 0, outMixer, 1);
 AudioControlSGTL5000 sgtl5000_1;  // xy=64.5,20
 // GUItool: end automatically generated code
 
-// AUDIO ARRAYS
-AudioAmplifier delayAmps[] = {fullDelay1Amp, fullDelay2Amp, fullDelay3Amp,
-                              fullDelay4Amp};
-AudioMixer4 delayMixers[] = {fullDelay1Mixer, fullDelay2Mixer, fullDelay3Mixer,
-                             fullDelay4Mixer};
-
 // BUTTONS
 // Button loopButton = Button();
 // Button synthButton = Button();
@@ -289,6 +283,8 @@ enum ROLL_STATE {
 };
 ROLL_STATE rollState = FLAT;
 ROLL_STATE lastRollState = FLAT;
+
+int activeLoop = 0;  // -1 = no loop active, 0-3 = loop index
 
 long unsigned int lastCheckedRibbonPot = 0,  // last time ribbon pot was checked
     lastMetronomeTick = 0,                   // last time metronome ticked
@@ -423,11 +419,19 @@ void setup(void) {
   fullDelay1Mixer.gain(1, 1.0);  // temp mixer
   fullDelay1Amp.gain(1.0);       // enable full delay 1 by default
   delaySelect.gain(0, 1.0);      // enable full delay 1 by default
+
+  // using a for loop for these does not work!
+  fullDelay2Amp.gain(0.0);
+  fullDelay3Amp.gain(0.0);
+  fullDelay4Amp.gain(0.0);
+  fullDelay2Mixer.gain(0, 1.0);  // full delay 2 feedback
+  fullDelay3Mixer.gain(0, 1.0);  // full delay 3 feedback
+  fullDelay4Mixer.gain(0, 1.0);  // full delay 4 feedback
+  fullDelay2Mixer.gain(1, 1.0);  // full delay 2 temp mixer
+  fullDelay3Mixer.gain(1, 1.0);  // full delay 3 temp mixer
+  fullDelay4Mixer.gain(1, 1.0);  // full delay 4 temp mixer
   for (int i = 1; i < 4; i++) {
-    delayAmps[i].gain(0.0);       // full delay i amp
-    delayMixers[i].gain(0, 1.0);  // full delay i feedback
-    delayMixers[i].gain(1, 1.0);  // full delay i temp mixer
-    delaySelect.gain(i, 0.0);     // disable full delay i output sound
+    delaySelect.gain(i, 0.0);  // disable full delay i output sound
   }
 
   // Amplitude Ramping
@@ -586,17 +590,17 @@ void loop() {
     if (rollState == LEFT_END_TRIGGER) {
       // Change Master Full Delay Loop
       Serial.println("Left end trigger");
-    }
-    if (rollState == RIGHT_END_TRIGGER) {
+      setActiveLoop((activeLoop + 3) % 4);
+    } else if (rollState == RIGHT_END_TRIGGER) {
       Serial.println("Right end trigger");
+      setActiveLoop((activeLoop + 1) % 4);
     }
   } else if (orientation == PLAYING) {
     // Change Octaves
     if (rollState == LEFT_END_TRIGGER) {
       Serial.println("Left end trigger");
       baseFreq /= 2;
-    }
-    if (rollState == RIGHT_END_TRIGGER) {
+    } else if (rollState == RIGHT_END_TRIGGER) {
       Serial.println("Right end trigger");
       baseFreq *= 2;
     }
@@ -668,17 +672,26 @@ void calculateRollState() {
   // state machine for roll
   switch (rollState) {
     case FLAT:
-      if (roll > 0.3) {
+      if (roll > 0.4) {
         rollState = LEFT_START_TRIGGER;
-      } else if (roll < -0.3) {
+      } else if (roll < -0.4) {
         rollState = RIGHT_START_TRIGGER;
       }
       break;
     case LEFT_START_TRIGGER:
-      rollState = LEFT;
+      // TODO (optional) add a delay to these 2 start triggers
+      if (roll > 0.4) {
+        rollState = LEFT;
+      } else {
+        rollState = FLAT;
+      }
       break;
     case RIGHT_START_TRIGGER:
-      rollState = RIGHT;
+      if (roll < -0.4) {
+        rollState = RIGHT;
+      } else {
+        rollState = FLAT;
+      }
       break;
     case LEFT:
       if (roll <= 0.1) {
@@ -1008,10 +1021,22 @@ void menuCode() {
         if (menuState == MENU_CLEAR) {
           // clear loops -- TODO add double clear
           tempDelay.clear();
-          fullDelay1.clear();
-          fullDelay2.clear();
-          fullDelay3.clear();
-          fullDelay4.clear();
+          tempDelay.clear();
+
+          switch (activeLoop) {
+            case 1:
+              fullDelay1.clear();
+              break;
+            case 2:
+              fullDelay2.clear();
+              break;
+            case 3:
+              fullDelay3.clear();
+              break;
+            case 4:
+              fullDelay4.clear();
+              break;
+          }
         }
 
       } else {
@@ -1048,11 +1073,20 @@ void menuCode() {
     display.print(metronomeSpeed);
     display.print("    ");
   }
+
+  // Loop Recording Status
   display.println(recordingState == READY_FOR_RECORD ? " " : "*");
 
   // Clear Loop
   displayMenuPrefix(MENU_CLEAR);
-  display.println("Clear Loop");
+  display.print("Clear Loop    ");
+
+  // Active Loop
+  if (activeLoop == -1) {
+    display.println(" ");
+  } else {
+    display.println(activeLoop);
+  }
 
   // Mode
   displayMenuPrefix(MENU_MODE);
@@ -1203,6 +1237,29 @@ void loopRecordingCode() {
   //   // clear the loop
   //   fullDelay.clear();
   // }
+}
+
+void setActiveLoop(int newLoopNum) {
+  // set inputs
+  fullDelay1Amp.gain(newLoopNum == 0 ? 1.0 : 0.0);
+  fullDelay2Amp.gain(newLoopNum == 1 ? 1.0 : 0.0);
+  fullDelay3Amp.gain(newLoopNum == 2 ? 1.0 : 0.0);
+  fullDelay4Amp.gain(newLoopNum == 3 ? 1.0 : 0.0);
+
+  // disable all loops
+  for (int i = 0; i < 4; i++) {
+    delaySelect.gain(i, 0.0);
+  }
+
+  // return if mute desired
+  if (newLoopNum == -1 || newLoopNum > 3) {
+    activeLoop = -1;
+    return;
+  }
+
+  // enable new loop
+  delaySelect.gain(newLoopNum, 1.0);
+  activeLoop = newLoopNum;
 }
 
 // HELPER FUNCTIONS
