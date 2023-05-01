@@ -397,12 +397,12 @@ void setup(void) {
   metronome.length(50);
   metronome.secondMix(0.0);
   metronome.pitchMod(0.5);
-  notification.frequency(10000);
-  notification.length(50);
+  notification.frequency(5000);
+  notification.length(100);
   notification.secondMix(0.0);
   notification.pitchMod(0.5);
-  overlayMixer.gain(0, 0.8);  // metronome
-  overlayMixer.gain(1, 0.8);  // notification
+  overlayMixer.gain(0, 1.0);  // metronome
+  overlayMixer.gain(1, 1.0);  // notification
 
   // Mode Selection
   modeSelect.gain(0, 1.0);  // simple/soft
@@ -589,33 +589,33 @@ void loop() {
   if (orientation == HOME) {
     if (rollState == LEFT_END_TRIGGER) {
       // Change Master Full Delay Loop
-      Serial.println("Left end trigger");
       setActiveLoop((activeLoop + 3) % 4);
+      // ping(500, 0.5);
     } else if (rollState == RIGHT_END_TRIGGER) {
-      Serial.println("Right end trigger");
       setActiveLoop((activeLoop + 1) % 4);
+      // ping(500, 0.5);
     }
   } else if (orientation == PLAYING) {
     // Change Octaves
     if (rollState == LEFT_END_TRIGGER) {
-      Serial.println("Left end trigger");
       baseFreq /= 2;
+      ping(500, 0.6);
     } else if (rollState == RIGHT_END_TRIGGER) {
-      Serial.println("Right end trigger");
       baseFreq *= 2;
+      ping(500, 0.4);
     }
   }
 
   // QUICK PERCUSSION
-  if (abs(accelz) > 19.0 && orientation == PLAYING) {
-    // a shake up/down usually goes up to 19.0
-    // TODO change to change in accel
-    Serial.println(accelz);
-    // drumSynth.noteOn();
-    if (!sdDrum1.isPlaying()) {
-      sdDrum1.play(SD_PERC[0]);
-    }
-  }
+  // if (abs(accelz) > 19.0 && orientation == PLAYING) {
+  //   // a shake up/down usually goes up to 19.0
+  //   // TODO change to change in accel
+  //   Serial.println(accelz);
+  //   // drumSynth.noteOn();
+  //   if (!sdDrum1.isPlaying()) {
+  //     sdDrum1.play(SD_PERC[0]);
+  //   }
+  // }
 
   delay(1);
 }
@@ -1024,16 +1024,16 @@ void menuCode() {
           tempDelay.clear();
 
           switch (activeLoop) {
-            case 1:
+            case 0:
               fullDelay1.clear();
               break;
-            case 2:
+            case 1:
               fullDelay2.clear();
               break;
-            case 3:
+            case 2:
               fullDelay3.clear();
               break;
-            case 4:
+            case 3:
               fullDelay4.clear();
               break;
           }
@@ -1199,7 +1199,11 @@ void loopRecordingCode() {
       // tempDelayMixer.gain(1, 0.0);
       // inRamp.amplitude(0.0, 50);
 
-      tempDelay.clear();  // TODO add double clear
+      // TODO add double clear
+      tempDelay.clear();
+      tempDelay.clear();
+
+      ping(500, 1.0);
 
       recordingState = READY_FOR_RECORD;
     }
@@ -1226,6 +1230,8 @@ void loopRecordingCode() {
       // fullDelayMixer.gain(0, 1.0); // already always 1.0 for full delay!
 
       outMixer.gain(1, 1.0);  // enable full delay
+
+      // ping(800, 0.3);
 
       recordingState = READY_FOR_RECORD;
     }
@@ -1271,4 +1277,10 @@ void setActiveLoop(int newLoopNum) {
 float mapFloat(float x, float in_min, float in_max, float out_min,
                float out_max) {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+void ping(float freq, float mod) {
+  notification.frequency(freq);
+  notification.pitchMod(mod);
+  notification.noteOn();
 }
