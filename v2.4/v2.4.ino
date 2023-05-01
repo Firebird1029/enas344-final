@@ -202,6 +202,8 @@ enum RECORDING_STATE {
 };
 RECORDING_STATE recordingState = READY_FOR_RECORD;
 
+int baseFreq = BASE_FREQ;
+
 const int majorScale[8] = {0, 2, 4, 5, 7, 9, 11, 12};
 const int minorScale[8] = {0, 2, 3, 5, 7, 8, 10, 12};
 const int pentatonicScale[6] = {0, 2, 4, 7, 9, 12};
@@ -232,6 +234,17 @@ elapsedMillis timer;  // master timer (auto-incrementing)
 enum ORIENTATION { HOME, PLAYING, OTHER };
 ORIENTATION orientation = HOME;
 ORIENTATION lastOrientation = HOME;
+enum ROLL_STATE {
+  FLAT,
+  LEFT,
+  LEFT_START_TRIGGER,
+  LEFT_END_TRIGGER,
+  RIGHT,
+  RIGHT_START_TRIGGER,
+  RIGHT_END_TRIGGER
+};
+ROLL_STATE rollState = FLAT;
+ROLL_STATE lastRollState = FLAT;
 
 long unsigned int lastCheckedRibbonPot = 0,  // last time ribbon pot was checked
     lastMetronomeTick = 0,                   // last time metronome ticked
@@ -287,7 +300,7 @@ void setup(void) {
 
   // Basic Synth
   inWaveformFM.begin(0.0, 6, WAVEFORM_SINE);
-  inWaveformMod.begin(0.5, BASE_FREQ, WAVEFORM_SAWTOOTH);
+  inWaveformMod.begin(0.5, baseFreq, WAVEFORM_SAWTOOTH);
   inWaveformMod.frequencyModulation(1);
   inEnvelope.attack(DEFAULT_ENV_ATTACK);
   inEnvelope.hold(DEFAULT_ENV_HOLD);
@@ -297,7 +310,7 @@ void setup(void) {
 
   // Chiptune
   chipDC.amplitude(0);
-  chipWave.begin(0.25, BASE_FREQ, WAVEFORM_BANDLIMIT_SQUARE);
+  chipWave.begin(0.25, baseFreq, WAVEFORM_BANDLIMIT_SQUARE);
   chipWave.frequencyModulation(CHIPTUNE_FREQ_MOD);
   chipEnv.attack(DEFAULT_ENV_ATTACK);
   chipEnv.hold(DEFAULT_ENV_HOLD);
@@ -307,7 +320,7 @@ void setup(void) {
 
   // Chords -- copy & paste from Basic Synth
   chord2fm.begin(0.0, 6, WAVEFORM_SINE);
-  chord2wave.begin(0.5, BASE_FREQ, WAVEFORM_SINE);
+  chord2wave.begin(0.5, baseFreq, WAVEFORM_SINE);
   chord2wave.frequencyModulation(1);
   chord2env.attack(DEFAULT_ENV_ATTACK);
   chord2env.hold(DEFAULT_ENV_HOLD);
@@ -316,7 +329,7 @@ void setup(void) {
   chord2env.release(DEFAULT_ENV_RELEASE);
 
   chord3fm.begin(0.0, 6, WAVEFORM_SINE);
-  chord3wave.begin(0.5, BASE_FREQ, WAVEFORM_SINE);
+  chord3wave.begin(0.5, baseFreq, WAVEFORM_SINE);
   chord3wave.frequencyModulation(1);
   chord3env.attack(DEFAULT_ENV_ATTACK);
   chord3env.hold(DEFAULT_ENV_HOLD);
@@ -468,9 +481,57 @@ void loop() {
   // LOOP RECORDING
   loopRecordingCode();
 
-  // VIBRATO
-  // Serial.println(pitch);
-  inWaveformFM.amplitude(mapFloat(abs(roll), 0, 0.5, 0, 0.1));
+  // METRONOME
+  metronomeCode();
+
+  // MENU OR SOUND EFFECTS
+  encValue = enc.read();
+  encButton.update();
+
+  if (orientation == HOME) {
+    if (lastOrientation == PLAYING) {
+      Serial.println("Playing -> Home");
+      // restore old encoder value
+      encValue = savedEncValueHome;
+      enc.write(savedEncValueHome);
+      lastOrientation = HOME;
+    }
+
+    menuCode();
+  } else if (orientation == PLAYING) {
+    if (lastOrientation == HOME) {
+      Serial.println("Home -> Playing");
+      // save encoder value
+      savedEncValueHome = encValue;
+      enc.write(0);
+
+      // reset base octave
+      baseFreq = BASE_FREQ;
+
+      lastOrientation = PLAYING;
+    }
+
+    soundEffectsCode();
+  }
+
+  // SET LOOP OR OCTAVES
+  if (orientation == HOME) {
+    if (rollState == LEFT_END_TRIGGER) {
+      // Change Master Full Delay Loop
+      Serial.println("Left end trigger");
+    }
+    if (rollState == RIGHT_END_TRIGGER) {
+      Serial.println("Right end trigger");
+    }
+  } else if (orientation == PLAYING) {
+    // Change Octaves
+    if (rollState == LEFT_END_TRIGGER) {
+      baseFreq /= 2;
+    }
+    if (rollState == RIGHT_END_TRIGGER) {
+      baseFreq *= 2;
+    }
+  }
 
   // QUICK PERCUSSION
   if (abs(accelz) > 19.0 && orientation == PLAYING) {
@@ -481,33 +542,6 @@ void loop() {
     if (!sdDrum1.isPlaying()) {
       sdDrum1.play(SD_PERC[0]);
     }
-  }
-
-  // METRONOME
-  metronomeCode();
-
-  // MENU
-  encValue = enc.read();
-  encButton.update();
-
-  if (orientation == HOME) {
-    if (lastOrientation == PLAYING) {
-      // restore old encoder value
-      encValue = savedEncValueHome;
-      enc.write(savedEncValueHome);
-      lastOrientation = HOME;
-    }
-
-    menuCode();
-  } else if (orientation == PLAYING) {
-    if (lastOrientation == HOME) {
-      // save encoder value
-      savedEncValueHome = encValue;
-      enc.write(0);
-      lastOrientation = PLAYING;
-    }
-
-    soundEffectsCode();
   }
 
   delay(1);
@@ -543,13 +577,54 @@ void motionCode() {
   roll = -MOTION_ALPHA * (roll + rollDot * 0.01) -
          (1 - MOTION_ALPHA) * accelRoll;  // final roll value
 
-  // ranges from -1.5 to 1.5
-  if (abs(pitch) < 0.75) {
-    orientation = PLAYING;
-  } else if (pitch <= -0.75) {
-    orientation = HOME;
-  } else {
-    orientation = OTHER;
+  // pitch ranges from -1.5 to 1.5
+  // roll ranges from -0.5 to 0.5
+
+  // calculate roll state
+  calculateRollState();
+
+  // only change orientation state based on pitch, if no roll
+  if (abs(roll) < 0.1) {
+    if (abs(pitch) < 0.3) {
+      orientation = PLAYING;
+    } else if (pitch < -1.2) {
+      orientation = HOME;
+    } else if (pitch > 1.2) {
+      orientation = OTHER;
+    }
+  }
+}
+
+void calculateRollState() {
+  // state machine for roll
+  switch (rollState) {
+    case FLAT:
+      if (roll > 0.3) {
+        rollState = LEFT_START_TRIGGER;
+      } else if (roll < -0.3) {
+        rollState = RIGHT_START_TRIGGER;
+      }
+      break;
+    case LEFT_START_TRIGGER:
+      rollState = LEFT;
+      break;
+    case RIGHT_START_TRIGGER:
+      rollState = RIGHT;
+      break;
+    case LEFT:
+      if (roll <= 0.1) {
+        rollState = LEFT_END_TRIGGER;
+      }
+      break;
+    case RIGHT:
+      if (roll >= -0.1) {
+        rollState = RIGHT_END_TRIGGER;
+      }
+      break;
+    case LEFT_END_TRIGGER:
+    case RIGHT_END_TRIGGER:
+      rollState = FLAT;
+      break;
   }
 }
 
@@ -569,12 +644,12 @@ void ribbonPotCode() {
       if (currentSoundMode != MODE_PERCUSSION) {
         mappedRibbonPotVal = mapScale(MINOR, mappedRibbonPotVal);
 
-        inWaveformMod.frequency(BASE_FREQ * pow(2, mappedRibbonPotVal / 12.0));
-        chipWave.frequency(BASE_FREQ * pow(2, mappedRibbonPotVal / 12.0));
+        inWaveformMod.frequency(baseFreq * pow(2, mappedRibbonPotVal / 12.0));
+        chipWave.frequency(baseFreq * pow(2, mappedRibbonPotVal / 12.0));
         // TODO FIX SET TO SEMITONES
-        chord2wave.frequency(BASE_FREQ *
+        chord2wave.frequency(baseFreq *
                              pow(2, (mappedRibbonPotVal + 4) / 12.0));
-        chord3wave.frequency(BASE_FREQ *
+        chord3wave.frequency(baseFreq *
                              pow(2, (mappedRibbonPotVal + 7) / 12.0));
       }
 
@@ -891,7 +966,6 @@ void menuCode() {
 
   display.clearDisplay();
   display.setCursor(0, 0);
-  // display.println(encValue);
 
   // Metronome
   displayMenuPrefix(MENU_METRONOME);
@@ -938,6 +1012,9 @@ void displayMenuPrefix(int ms) {
 
 void soundEffectsCode() {
   // TODO
+  // VIBRATO
+  // Serial.println(pitch);
+  // inWaveformFM.amplitude(mapFloat(abs(roll), 0, 0.5, 0, 0.1));
 }
 
 // LOOP RECORDING CODE
@@ -985,7 +1062,7 @@ void loopRecordingCode() {
 
   // START COMMITTING LAYER
   else if (recordingState == READY_FOR_COMMIT) {
-    if (pitch < -1.3) {
+    if (orientation == HOME) {
       Serial.println("SAVE pitch detected, committing recording");
 
       // FROM FINISH RECORDING
@@ -1007,9 +1084,7 @@ void loopRecordingCode() {
 
       commitRecordingStart = timer;
       recordingState = COMMITTING;
-    }
-
-    if (pitch > 1.3) {
+    } else if (orientation == OTHER) {
       Serial.println("DISCARD pitch detected");
 
       // unnecessary because you have to orient back to playing position anyway
