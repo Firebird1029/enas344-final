@@ -995,6 +995,7 @@ void menuCode() {
 }
 
 void displayMenuPrefix(int ms) {
+  display.print(" ");  // TODO remove when OLED replaced
   if (menuState == ms) {
     display.print(">");
   } else {
