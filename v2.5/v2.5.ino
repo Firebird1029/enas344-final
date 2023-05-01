@@ -304,7 +304,7 @@ bool curSustainStatus = false;
 
 // GLOBAL - MENU (OLED + ENCODER)
 
-// Warning: Make sure all 3 variables match!
+// Warning: Make sure all 5 variables match!
 #define NUM_MODE_OPTIONS 5
 const char *MODE_OPTIONS[NUM_MODE_OPTIONS] = {"Simple", "Soft", "Chiptune",
                                               "Chord", "Percussion"};
@@ -316,14 +316,21 @@ enum MODE_STATE {
   MODE_PERCUSSION
 };
 
-enum MENU_STATE { MENU_MODE, MENU_VOLUME, MENU_CLEAR, MENU_METRONOME };
+enum MENU_STATE {
+  MENU_MODE,
+  MENU_VOLUME,
+  MENU_CLEAR,
+  MENU_METRONOME,
+  MENU_LOOPER
+};
 enum MENU_ACTIVE { MENU_INACTIVE, MENU_ACTIVE_OPTION };
 MENU_STATE menuState = MENU_MODE;
 MENU_ACTIVE menuActiveState = MENU_INACTIVE;
 
 MODE_STATE currentSoundMode = MODE_SIMPLE;  // see MODE_OPTIONS
-int clientMasterVolume = 100,               // 0-100
-    encValue,                               // current encoder value
+bool looperOn = false;         // true = loop automatically on playing position
+int clientMasterVolume = 100,  // 0-100
+    encValue,                  // current encoder value
     savedEncValueMenu,  // encValue of main menu (before entering active option)
     savedEncValueHome;  // encValue of menu (both main menu and active submenu)
                         // before switching to playing mode
@@ -607,15 +614,15 @@ void loop() {
   }
 
   // QUICK PERCUSSION
-  // if (abs(accelz) > 19.0 && orientation == PLAYING) {
-  //   // a shake up/down usually goes up to 19.0
-  //   // TODO change to change in accel
-  //   Serial.println(accelz);
-  //   // drumSynth.noteOn();
-  //   if (!sdDrum1.isPlaying()) {
-  //     sdDrum1.play(SD_PERC[0]);
-  //   }
-  // }
+  if (abs(accelz) > 19.0 && orientation == PLAYING) {
+    // a shake up/down usually goes up to 19.0
+    // TODO change to change in accel
+    // Serial.println(accelz);
+    // drumSynth.noteOn();
+    // if (!sdDrum1.isPlaying()) {
+    //   sdDrum1.play(SD_PERC[0]);
+    // }
+  }
 
   delay(1);
 }
@@ -960,15 +967,16 @@ void menuCode() {
     if (encValue >= 0 && encValue < MES) {
       menuState = MENU_METRONOME;
     } else if (encValue >= MES && encValue < 2 * MES) {
-      menuState = MENU_CLEAR;
-    } else if (encValue >= 2 * MES && encValue < 3 * MES) {
       menuState = MENU_MODE;
+    } else if (encValue >= 2 * MES && encValue < 3 * MES) {
+      menuState = MENU_LOOPER;
     } else if (encValue >= 3 * MES && encValue < 4 * MES) {
+      menuState = MENU_CLEAR;
+    } else if (encValue >= 4 * MES && encValue < 5 * MES) {
       menuState = MENU_VOLUME;
-      // menuState = MENU_POWER;
     } else if (encValue < 0) {
       // TODO switch to programmatic way
-      enc.write(39);
+      enc.write(49);
     } else {
       enc.write(0);
     }
@@ -983,6 +991,11 @@ void menuCode() {
         currentSoundMode =
             (MODE_STATE)(currentSoundMode + NUM_MODE_OPTIONS - 1) %
             NUM_MODE_OPTIONS;
+        enc.write(0);
+      }
+    } else if (menuState == MENU_LOOPER) {
+      if (encValue >= MES || encValue <= -MES) {
+        looperOn = !looperOn;
         enc.write(0);
       }
     } else if (menuState == MENU_VOLUME) {
@@ -1077,9 +1090,17 @@ void menuCode() {
   // Loop Recording Status
   display.println(recordingState == READY_FOR_RECORD ? " " : "*");
 
+  // Mode
+  displayMenuPrefix(MENU_MODE);
+  display.println(MODE_OPTIONS[currentSoundMode]);
+
+  // Looper
+  displayMenuPrefix(MENU_LOOPER);
+  display.print(looperOn ? "L  " : "P  ");
+
   // Clear Loop
   displayMenuPrefix(MENU_CLEAR);
-  display.print("Clear Loop    ");
+  display.print("Clear    ");
 
   // Active Loop
   if (activeLoop == -1) {
@@ -1087,10 +1108,6 @@ void menuCode() {
   } else {
     display.println(activeLoop);
   }
-
-  // Mode
-  displayMenuPrefix(MENU_MODE);
-  display.println(MODE_OPTIONS[currentSoundMode]);
 
   // Volume
   displayMenuPrefix(MENU_VOLUME);
@@ -1101,7 +1118,6 @@ void menuCode() {
 }
 
 void displayMenuPrefix(int ms) {
-  display.print(" ");  // TODO remove when OLED replaced
   if (menuState == ms) {
     display.print(">");
   } else {
@@ -1128,9 +1144,9 @@ void soundEffectsCode() {
 void loopRecordingCode() {
   // START RECORDING
   if (recordingState == READY_FOR_RECORD) {
-    if (orientation == PLAYING) {
-      // to prevent race conditions, do not allow recording a loop if in the
-      // middle of committing a loop
+    // to prevent race conditions, do not allow recording a loop if in the
+    // middle of committing a loop
+    if (orientation == PLAYING && looperOn) {
       Serial.println("STARTING LOOP RECORDING");
       // send the synth signal into the delay loop
       tempDelayMixer.gain(1, 1.0);
