@@ -74,11 +74,17 @@
 
 // AUDIO
 EXTMEM int16_t DELAY_LINE_TEMP[DELAYLINE_MAX_LEN] = {};
-EXTMEM int16_t DELAY_LINE_FULL[DELAYLINE_MAX_LEN] = {};
+EXTMEM int16_t DELAY_LINE_FULL_1[DELAYLINE_MAX_LEN] = {};
+EXTMEM int16_t DELAY_LINE_FULL_2[DELAYLINE_MAX_LEN] = {};
+EXTMEM int16_t DELAY_LINE_FULL_3[DELAYLINE_MAX_LEN] = {};
+EXTMEM int16_t DELAY_LINE_FULL_4[DELAYLINE_MAX_LEN] = {};
 
 // CUSTOM OVERRIDES
-AudioEffectdelayLoop tempDelay;  // xy=607,182
-AudioEffectdelayLoop fullDelay;  // xy=868,201
+AudioEffectdelayLoop tempDelay;   // xy=607,182
+AudioEffectdelayLoop fullDelay1;  // xy=868,201
+AudioEffectdelayLoop fullDelay2;  // xy=868,201
+AudioEffectdelayLoop fullDelay3;  // xy=868,201
+AudioEffectdelayLoop fullDelay4;  // xy=868,201
 
 // GUItool: begin automatically generated code
 AudioSynthWaveformDc chipDC;                // xy=55,583
@@ -100,21 +106,34 @@ AudioMixer4 drumMixer;                      // xy=314,715
 AudioMixer4 inMixer;                        // xy=335.5,177
 AudioEffectEnvelope chipEnv;                // xy=335,590
 AudioEffectEnvelope chord3env;              // xy=351.5,545
+AudioSynthSimpleDrum metronome;             // xy=354,28
 AudioEffectEnvelope chord2env;              // xy=353.5,506
+AudioSynthSimpleDrum notification;          // xy=364,65
 AudioEffectEnvelope inEnvelope;             // xy=363.5,453
-AudioSynthSimpleDrum metronome;             // xy=448,39
 AudioMixer4 tempDelayMixer;                 // xy=457.5,302
+AudioMixer4 overlayMixer;                   // xy=519,54
 AudioMixer4 chordMixer;                     // xy=528.5,502
 // AudioEffectDelay         tempDelay;      //xy=607.5,182
-AudioSynthWaveformDc fullRamp;             // xy=641,313
+AudioAmplifier fullDelay2Amp;              // xy=672,352
+AudioAmplifier fullDelay1Amp;              // xy=678,286
 AudioSynthWaveformSine outLadderFreqSine;  // xy=681.5,89
 AudioMixer4 outMixer;                      // xy=712.5,35
-AudioEffectMultiply multiply2;             // xy=770,336
-AudioMixer4 fullDelayMixer;                // xy=844.5,211
+AudioAmplifier fullDelay4Amp;              // xy=715,596
+AudioAmplifier fullDelay3Amp;              // xy=722,466
+AudioSynthWaveformDc fullRamp;             // xy=773,134
+AudioMixer4 fullDelay1Mixer;               // xy=847.5,292
+AudioMixer4 fullDelay2Mixer;               // xy=849,363
+AudioMixer4 fullDelay3Mixer;               // xy=852,522
+AudioMixer4 fullDelay4Mixer;               // xy=853,648
 AudioFilterLadder outLadder;               // xy=880.5,30
+AudioEffectMultiply multiply2;             // xy=892,167
 AudioAmplifier outAmp;                     // xy=997,75
-// AudioEffectDelay         fullDelay;      //xy=1022.5,193
-AudioOutputI2S i2s1;  // xy=1120.5,31
+// AudioEffectDelay         fullDelay1;      //xy=1000.5,292
+// AudioEffectDelay         fullDelay2;         //xy=1000,420
+// AudioEffectDelay         fullDelay3;         //xy=1000,549
+// AudioEffectDelay         fullDelay4;         //xy=1001,677
+AudioMixer4 delaySelect;  // xy=1076,161
+AudioOutputI2S i2s1;      // xy=1120.5,31
 AudioConnection patchCord1(chipDC, 0, chipWave, 0);
 AudioConnection patchCord2(sdDrum1, 0, drumMixer, 1);
 AudioConnection patchCord3(sdDrum2, 0, drumMixer, 2);
@@ -136,27 +155,52 @@ AudioConnection patchCord18(inMixer, 0, outMixer, 0);
 AudioConnection patchCord19(inMixer, 0, multiply1, 1);
 AudioConnection patchCord20(chipEnv, 0, modeSelect, 1);
 AudioConnection patchCord21(chord3env, 0, chordMixer, 2);
-AudioConnection patchCord22(chord2env, 0, chordMixer, 1);
-AudioConnection patchCord23(inEnvelope, 0, modeSelect, 0);
-AudioConnection patchCord24(inEnvelope, 0, chordMixer, 0);
-AudioConnection patchCord25(metronome, 0, outMixer, 3);
-AudioConnection patchCord26(tempDelayMixer, tempDelay);
-AudioConnection patchCord27(chordMixer, 0, modeSelect, 2);
-AudioConnection patchCord28(tempDelay, 0, tempDelayMixer, 0);
-AudioConnection patchCord29(tempDelay, 0, outMixer, 2);
-AudioConnection patchCord30(tempDelay, 0, multiply2, 1);
-AudioConnection patchCord31(fullRamp, 0, multiply2, 0);
-AudioConnection patchCord32(outLadderFreqSine, 0, outLadder, 1);
-AudioConnection patchCord33(outMixer, 0, outLadder, 0);
-AudioConnection patchCord34(multiply2, 0, fullDelayMixer, 1);
-AudioConnection patchCord35(fullDelayMixer, fullDelay);
-AudioConnection patchCord36(outLadder, outAmp);
-AudioConnection patchCord37(outAmp, 0, i2s1, 0);
-AudioConnection patchCord38(outAmp, 0, i2s1, 1);
-AudioConnection patchCord39(fullDelay, 0, fullDelayMixer, 0);
-AudioConnection patchCord40(fullDelay, 0, outMixer, 1);
+AudioConnection patchCord22(metronome, 0, overlayMixer, 0);
+AudioConnection patchCord23(chord2env, 0, chordMixer, 1);
+AudioConnection patchCord24(notification, 0, overlayMixer, 1);
+AudioConnection patchCord25(inEnvelope, 0, modeSelect, 0);
+AudioConnection patchCord26(inEnvelope, 0, chordMixer, 0);
+AudioConnection patchCord27(tempDelayMixer, tempDelay);
+AudioConnection patchCord28(overlayMixer, 0, outMixer, 3);
+AudioConnection patchCord29(chordMixer, 0, modeSelect, 2);
+AudioConnection patchCord30(tempDelay, 0, tempDelayMixer, 0);
+AudioConnection patchCord31(tempDelay, 0, outMixer, 2);
+AudioConnection patchCord32(tempDelay, 0, multiply2, 1);
+AudioConnection patchCord33(fullDelay2Amp, 0, fullDelay2Mixer, 1);
+AudioConnection patchCord34(fullDelay1Amp, 0, fullDelay1Mixer, 1);
+AudioConnection patchCord35(outLadderFreqSine, 0, outLadder, 1);
+AudioConnection patchCord36(outMixer, 0, outLadder, 0);
+AudioConnection patchCord37(fullDelay4Amp, 0, fullDelay4Mixer, 1);
+AudioConnection patchCord38(fullDelay3Amp, 0, fullDelay3Mixer, 1);
+AudioConnection patchCord39(fullRamp, 0, multiply2, 0);
+AudioConnection patchCord40(fullDelay1Mixer, fullDelay1);
+AudioConnection patchCord41(fullDelay2Mixer, fullDelay2);
+AudioConnection patchCord42(fullDelay3Mixer, fullDelay3);
+AudioConnection patchCord43(fullDelay4Mixer, fullDelay4);
+AudioConnection patchCord44(outLadder, outAmp);
+AudioConnection patchCord45(multiply2, fullDelay1Amp);
+AudioConnection patchCord46(multiply2, fullDelay2Amp);
+AudioConnection patchCord47(multiply2, fullDelay3Amp);
+AudioConnection patchCord48(multiply2, fullDelay4Amp);
+AudioConnection patchCord49(outAmp, 0, i2s1, 0);
+AudioConnection patchCord50(outAmp, 0, i2s1, 1);
+AudioConnection patchCord51(fullDelay1, 0, fullDelay1Mixer, 0);
+AudioConnection patchCord52(fullDelay1, 0, delaySelect, 0);
+AudioConnection patchCord53(fullDelay2, 0, fullDelay2Mixer, 0);
+AudioConnection patchCord54(fullDelay2, 0, delaySelect, 1);
+AudioConnection patchCord55(fullDelay3, 0, fullDelay3Mixer, 0);
+AudioConnection patchCord56(fullDelay3, 0, delaySelect, 2);
+AudioConnection patchCord57(fullDelay4, 0, fullDelay4Mixer, 0);
+AudioConnection patchCord58(fullDelay4, 0, delaySelect, 3);
+AudioConnection patchCord59(delaySelect, 0, outMixer, 1);
 AudioControlSGTL5000 sgtl5000_1;  // xy=64.5,20
 // GUItool: end automatically generated code
+
+// AUDIO ARRAYS
+AudioAmplifier delayAmps[] = {fullDelay1Amp, fullDelay2Amp, fullDelay3Amp,
+                              fullDelay4Amp};
+AudioMixer4 delayMixers[] = {fullDelay1Mixer, fullDelay2Mixer, fullDelay3Mixer,
+                             fullDelay4Mixer};
 
 // BUTTONS
 // Button loopButton = Button();
@@ -352,11 +396,17 @@ void setup(void) {
   drumMixer.gain(2, 0.0);  // sd sample reader 2
   drumMixer.gain(3, 0.0);  // sd sample reader 3
 
-  // Metronome
+  // Overlay Sounds (Metronome + Notification)
   metronome.frequency(4000);
   metronome.length(50);
   metronome.secondMix(0.0);
   metronome.pitchMod(0.5);
+  notification.frequency(10000);
+  notification.length(50);
+  notification.secondMix(0.0);
+  notification.pitchMod(0.5);
+  overlayMixer.gain(0, 0.8);  // metronome
+  overlayMixer.gain(1, 0.8);  // notification
 
   // Mode Selection
   modeSelect.gain(0, 1.0);  // simple/soft
@@ -366,11 +416,19 @@ void setup(void) {
   inMixer.gain(0, 0.8);     // mode output
   inMixer.gain(1, 0.8);     // drum synth
 
-  // Delay Lines - Mixers Only
-  tempDelayMixer.gain(0, 0.0);  // feedback
-  tempDelayMixer.gain(1, 0.0);  // inMixer
-  fullDelayMixer.gain(0, 1.0);  // feedback
-  fullDelayMixer.gain(1, 0.0);  // temp mixer
+  // Delay Lines - Amps & Mixers Only
+  tempDelayMixer.gain(0, 0.0);   // feedback
+  tempDelayMixer.gain(1, 0.0);   // inMixer
+  fullDelay1Mixer.gain(0, 1.0);  // feedback
+  fullDelay1Mixer.gain(1, 1.0);  // temp mixer
+  fullDelay1Amp.gain(1.0);       // enable full delay 1 by default
+  delaySelect.gain(0, 1.0);      // enable full delay 1 by default
+  for (int i = 1; i < 4; i++) {
+    delayAmps[i].gain(0.0);       // full delay i amp
+    delayMixers[i].gain(0, 1.0);  // full delay i feedback
+    delayMixers[i].gain(1, 1.0);  // full delay i temp mixer
+    delaySelect.gain(i, 0.0);     // disable full delay i output sound
+  }
 
   // Amplitude Ramping
   inRamp.amplitude(0.0);
@@ -382,7 +440,7 @@ void setup(void) {
                 0.0);  // full delay -- set to 0.0 to avoid initial random noise
   outMixer.gain(2,
                 0.0);  // temp delay -- set to 0.0 to avoid initial random noise
-  outMixer.gain(3, 1.0);  // metronome
+  outMixer.gain(3, 1.0);  // overlay sounds
   outLadderFreqSine.frequency(10);
   outLadderFreqSine.amplitude(0);
   outLadder.frequency(100000);
@@ -445,14 +503,23 @@ void setup(void) {
 
   // DELAY LINES
   tempDelay.begin(DELAY_LINE_TEMP, DELAYLINE_MAX_LEN);
-  fullDelay.begin(DELAY_LINE_FULL, DELAYLINE_MAX_LEN);
-  tempDelay.delay(0, LOOP_TIME);  // must come after tempDelay.begin!
-  fullDelay.delay(0, LOOP_TIME);  // must come after fullDelay.begin!
+  fullDelay1.begin(DELAY_LINE_FULL_1, DELAYLINE_MAX_LEN);
+  fullDelay2.begin(DELAY_LINE_FULL_2, DELAYLINE_MAX_LEN);
+  fullDelay3.begin(DELAY_LINE_FULL_3, DELAYLINE_MAX_LEN);
+  fullDelay4.begin(DELAY_LINE_FULL_4, DELAYLINE_MAX_LEN);
+  tempDelay.delay(0, LOOP_TIME);   // must come after tempDelay.begin!
+  fullDelay1.delay(0, LOOP_TIME);  // must come after fullDelay.begin!
+  fullDelay2.delay(0, LOOP_TIME);  // etc.
+  fullDelay3.delay(0, LOOP_TIME);
+  fullDelay4.delay(0, LOOP_TIME);
 
   // clear delay lines -- avoid initial random noise
   // TODO add double clear
   tempDelay.clear();
-  fullDelay.clear();
+  fullDelay1.clear();
+  fullDelay2.clear();
+  fullDelay3.clear();
+  fullDelay4.clear();
 
   Serial.println("Finished setup.");
   delay(100);
@@ -526,9 +593,11 @@ void loop() {
   } else if (orientation == PLAYING) {
     // Change Octaves
     if (rollState == LEFT_END_TRIGGER) {
+      Serial.println("Left end trigger");
       baseFreq /= 2;
     }
     if (rollState == RIGHT_END_TRIGGER) {
+      Serial.println("Right end trigger");
       baseFreq *= 2;
     }
   }
@@ -939,7 +1008,10 @@ void menuCode() {
         if (menuState == MENU_CLEAR) {
           // clear loops -- TODO add double clear
           tempDelay.clear();
-          fullDelay.clear();
+          fullDelay1.clear();
+          fullDelay2.clear();
+          fullDelay3.clear();
+          fullDelay4.clear();
         }
 
       } else {
@@ -1080,7 +1152,7 @@ void loopRecordingCode() {
       // END FROM FINISH RECORDING
 
       // enable temp delay signal into full delay
-      fullDelayMixer.gain(1, 1.0);
+      // fullDelay1Mixer.gain(1, 1.0);
       fullRamp.amplitude(1.0, 50);
 
       commitRecordingStart = timer;
