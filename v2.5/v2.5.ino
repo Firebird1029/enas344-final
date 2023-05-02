@@ -918,7 +918,13 @@ void chiptuneCode() {
 void metronomeCode() {
   if (metronomeSpeed > 0) {
     if (timer >= lastMetronomeTick + (LOOP_TIME / (metronomeSpeed * 4))) {
-      lastMetronomeTick = timer;
+      if (timer >=
+          (lastMetronomeTick + 2 * (LOOP_TIME / (metronomeSpeed * 4)))) {
+        lastMetronomeTick = timer;
+      } else {
+        lastMetronomeTick =
+            lastMetronomeTick + (LOOP_TIME / (metronomeSpeed * 4));
+      }
 
       // theoretically reduces metronome drift,
       // but doesn't work if metronome can be turned off
