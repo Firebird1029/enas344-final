@@ -718,7 +718,7 @@ void calculateRollState() {
 }
 
 // RIBBON POT CODE
-
+const int minorSemiTonesUp[] = {3, 3, 4, 3, 3, 4, 4, 3};
 void ribbonPotCode() {
   // only check ribbon pot for updates as fast as RIBBON_POT_CHECK_RATE
   if (timer >= lastCheckedRibbonPot + RIBBON_POT_CHECK_RATE) {
@@ -731,13 +731,18 @@ void ribbonPotCode() {
 
       // set frequencies in pitched modes
       if (currentSoundMode != MODE_PERCUSSION) {
+        int tempFix = mappedRibbonPotVal;
         mappedRibbonPotVal = mapScale(MINOR, mappedRibbonPotVal);
 
         inWaveformMod.frequency(baseFreq * pow(2, mappedRibbonPotVal / 12.0));
         chipWave.frequency(baseFreq * pow(2, mappedRibbonPotVal / 12.0));
         // TODO FIX SET TO SEMITONES
-        chord2wave.frequency(baseFreq *
-                             pow(2, (mappedRibbonPotVal + 4) / 12.0));
+        // chord2wave.frequency(baseFreq *
+        //                      pow(2, (mappedRibbonPotVal + 3) / 12.0));
+
+        chord2wave.frequency(
+            baseFreq *
+            pow(2, (mappedRibbonPotVal + minorSemiTonesUp[tempFix]) / 12.0));
         chord3wave.frequency(baseFreq *
                              pow(2, (mappedRibbonPotVal + 7) / 12.0));
       }
@@ -915,7 +920,7 @@ void modeSelectionCode() {
 
   // Simple
   if (currentSoundMode == MODE_SIMPLE) {
-    inWaveformMod.begin(WAVEFORM_SAWTOOTH);
+    inWaveformMod.begin(WAVEFORM_SQUARE);
     inWaveformMod.amplitude(0.5);
     modeSelect.gain(0, 1.0);
   }
