@@ -843,21 +843,18 @@ void mapPercussion(int sampleNum) {
       sdDrum1.play(SD_PERC[2]);
       break;
     case 3:
-      sdDrum1.play(SD_PERC[2]);
-      break;
-    case 4:
       sdDrum1.play(SD_PERC[3]);
       break;
-    case 5:
+    case 4:
       sdDrum1.play(SD_PERC[4]);
       break;
-    case 6:
+    case 5:
       sdDrum1.play(SD_PERC[5]);
       break;
-    case 7:
+    case 6:
       sdDrum1.play(SD_PERC[6]);
       break;
-    case 8:
+    case 7:
       sdDrum1.play(SD_PERC[7]);
       break;
   }
