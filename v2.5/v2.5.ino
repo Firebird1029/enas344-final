@@ -17,7 +17,7 @@
 // GENERAL
 
 #define LOOP_TIME 2400  // 1 measure @ 100 bpm (1 quarter note = 600 ms)
-#define MASTER_VOLUME 0.8
+#define MASTER_VOLUME 0.5
 
 // menu encoder sensitivity (how many encoder steps per menu item)
 #define MES 10
@@ -87,53 +87,59 @@ AudioEffectdelayLoop fullDelay3;  // xy=868,201
 AudioEffectdelayLoop fullDelay4;  // xy=868,201
 
 // GUItool: begin automatically generated code
-AudioSynthWaveformDc chipDC;                // xy=55,583
+AudioSynthWaveformDc chipDC;                // xy=55.5,583
 AudioPlaySdRaw sdDrum1;                     // xy=58.5,701
 AudioPlaySdRaw sdDrum2;                     // xy=58.5,738
 AudioSynthWaveform chord2fm;                // xy=59.5,499
 AudioPlaySdRaw sdDrum3;                     // xy=58.5,776
 AudioSynthWaveform chord3fm;                // xy=60.5,539
-AudioSynthSimpleDrum drumSynth;             // xy=64,661
+AudioSynthSimpleDrum drumSynth;             // xy=64.5,661
 AudioSynthWaveform inWaveformFM;            // xy=77.5,401
-AudioSynthWaveformDc inRamp;                // xy=120,298
+AudioSynthWaveformDc inRamp;                // xy=120.5,298
 AudioSynthWaveformModulated inWaveformMod;  // xy=191.5,452
-AudioSynthWaveformModulated chipWave;       // xy=196,590
+AudioSynthWaveformModulated chipWave;       // xy=196.5,590
 AudioSynthWaveformModulated chord3wave;     // xy=201.5,545
 AudioSynthWaveformModulated chord2wave;     // xy=205.5,506
 AudioMixer4 modeSelect;                     // xy=219.5,80
-AudioEffectMultiply multiply1;              // xy=252,325
-AudioMixer4 drumMixer;                      // xy=314,715
+AudioEffectMultiply multiply1;              // xy=252.5,325
+AudioMixer4 drumMixer;                      // xy=314.5,715
 AudioMixer4 inMixer;                        // xy=335.5,177
-AudioEffectEnvelope chipEnv;                // xy=335,590
+AudioEffectEnvelope chipEnv;                // xy=335.5,590
 AudioEffectEnvelope chord3env;              // xy=351.5,545
-AudioSynthSimpleDrum metronome;             // xy=354,28
+AudioSynthSimpleDrum metronome;             // xy=354.5,28
 AudioEffectEnvelope chord2env;              // xy=353.5,506
-AudioSynthSimpleDrum notification;          // xy=364,65
+AudioSynthSimpleDrum notification;          // xy=364.5,65
 AudioEffectEnvelope inEnvelope;             // xy=363.5,453
 AudioMixer4 tempDelayMixer;                 // xy=457.5,302
-AudioMixer4 overlayMixer;                   // xy=519,54
+AudioMixer4 overlayMixer;                   // xy=519.5,54
 AudioMixer4 chordMixer;                     // xy=528.5,502
 // AudioEffectDelay         tempDelay;      //xy=607.5,182
-AudioAmplifier fullDelay2Amp;              // xy=672,352
-AudioAmplifier fullDelay1Amp;              // xy=678,286
+AudioAmplifier fullDelay2Amp;              // xy=672.5,352
+AudioAmplifier fullDelay1Amp;              // xy=678.5,286
 AudioSynthWaveformSine outLadderFreqSine;  // xy=681.5,89
 AudioMixer4 outMixer;                      // xy=712.5,35
-AudioAmplifier fullDelay4Amp;              // xy=715,596
-AudioAmplifier fullDelay3Amp;              // xy=722,466
-AudioSynthWaveformDc fullRamp;             // xy=773,134
+AudioAmplifier fullDelay4Amp;              // xy=715.5,596
+AudioAmplifier fullDelay3Amp;              // xy=722.5,466
+AudioSynthWaveformDc fullRamp;             // xy=773.5,134
 AudioMixer4 fullDelay1Mixer;               // xy=847.5,292
-AudioMixer4 fullDelay2Mixer;               // xy=849,363
-AudioMixer4 fullDelay3Mixer;               // xy=852,522
-AudioMixer4 fullDelay4Mixer;               // xy=853,648
+AudioMixer4 fullDelay2Mixer;               // xy=849.5,363
+AudioMixer4 fullDelay3Mixer;               // xy=852.5,522
+AudioMixer4 fullDelay4Mixer;               // xy=853.5,648
 AudioFilterLadder outLadder;               // xy=880.5,30
-AudioEffectMultiply multiply2;             // xy=892,167
-AudioAmplifier outAmp;                     // xy=997,75
-// AudioEffectDelay         fullDelay1;      //xy=1000.5,292
-// AudioEffectDelay         fullDelay2;         //xy=1000,420
-// AudioEffectDelay         fullDelay3;         //xy=1000,549
-// AudioEffectDelay         fullDelay4;         //xy=1001,677
-AudioMixer4 delaySelect;  // xy=1076,161
-AudioOutputI2S i2s1;      // xy=1120.5,31
+AudioEffectMultiply multiply2;             // xy=892.5,167
+AudioAmplifier outAmp;                     // xy=997.5,75
+// AudioEffectDelay         fullDelay1;     //xy=1000.5,292
+// AudioEffectDelay         fullDelay2;     //xy=1000.5,420
+// AudioEffectDelay         fullDelay3;     //xy=1000.5,549
+// AudioEffectDelay         fullDelay4;     //xy=1001.5,677
+AudioMixer4 delaySelectNew;               // xy=1076.5,161
+AudioOutputI2S i2s1;                      // xy=1120.5,31
+AudioSynthWaveformDc delaySelectOldRamp;  // xy=1177,337
+AudioSynthWaveformDc delaySelectNewRamp;  // xy=1187,246
+AudioEffectMultiply multiply3;            // xy=1275,287
+AudioEffectMultiply multiply4;            // xy=1278,369
+AudioMixer4 delaySelectOld;               // xy=1294,444
+AudioMixer4 delayOutMixer;                // xy=1308,165
 AudioConnection patchCord1(chipDC, 0, chipWave, 0);
 AudioConnection patchCord2(sdDrum1, 0, drumMixer, 1);
 AudioConnection patchCord3(sdDrum2, 0, drumMixer, 2);
@@ -185,14 +191,24 @@ AudioConnection patchCord48(multiply2, fullDelay4Amp);
 AudioConnection patchCord49(outAmp, 0, i2s1, 0);
 AudioConnection patchCord50(outAmp, 0, i2s1, 1);
 AudioConnection patchCord51(fullDelay1, 0, fullDelay1Mixer, 0);
-AudioConnection patchCord52(fullDelay1, 0, delaySelect, 0);
-AudioConnection patchCord53(fullDelay2, 0, fullDelay2Mixer, 0);
-AudioConnection patchCord54(fullDelay2, 0, delaySelect, 1);
-AudioConnection patchCord55(fullDelay3, 0, fullDelay3Mixer, 0);
-AudioConnection patchCord56(fullDelay3, 0, delaySelect, 2);
-AudioConnection patchCord57(fullDelay4, 0, fullDelay4Mixer, 0);
-AudioConnection patchCord58(fullDelay4, 0, delaySelect, 3);
-AudioConnection patchCord59(delaySelect, 0, outMixer, 1);
+AudioConnection patchCord52(fullDelay1, 0, delaySelectNew, 0);
+AudioConnection patchCord53(fullDelay1, 0, delaySelectOld, 0);
+AudioConnection patchCord54(fullDelay2, 0, fullDelay2Mixer, 0);
+AudioConnection patchCord55(fullDelay2, 0, delaySelectNew, 1);
+AudioConnection patchCord56(fullDelay2, 0, delaySelectOld, 1);
+AudioConnection patchCord57(fullDelay3, 0, fullDelay3Mixer, 0);
+AudioConnection patchCord58(fullDelay3, 0, delaySelectNew, 2);
+AudioConnection patchCord59(fullDelay3, 0, delaySelectOld, 2);
+AudioConnection patchCord60(fullDelay4, 0, fullDelay4Mixer, 0);
+AudioConnection patchCord61(fullDelay4, 0, delaySelectNew, 3);
+AudioConnection patchCord62(fullDelay4, 0, delaySelectOld, 3);
+AudioConnection patchCord63(delaySelectNew, 0, multiply3, 1);
+AudioConnection patchCord64(delaySelectOldRamp, 0, multiply4, 0);
+AudioConnection patchCord65(delaySelectNewRamp, 0, multiply3, 0);
+AudioConnection patchCord66(multiply3, 0, delayOutMixer, 0);
+AudioConnection patchCord67(multiply4, 0, delayOutMixer, 1);
+AudioConnection patchCord68(delaySelectOld, 0, multiply4, 1);
+AudioConnection patchCord69(delayOutMixer, 0, outMixer, 1);
 AudioControlSGTL5000 sgtl5000_1;  // xy=64.5,20
 // GUItool: end automatically generated code
 
@@ -425,7 +441,10 @@ void setup(void) {
   fullDelay1Mixer.gain(0, 1.0);  // feedback
   fullDelay1Mixer.gain(1, 1.0);  // temp mixer
   fullDelay1Amp.gain(1.0);       // enable full delay 1 by default
-  delaySelect.gain(0, 1.0);      // enable full delay 1 by default
+  delaySelectNew.gain(0, 1.0);   // enable full delay 1 by default
+  delaySelectNewRamp.amplitude(1.0);
+  delayOutMixer.gain(0, 1.0);
+  delayOutMixer.gain(1, 1.0);
 
   // using a for loop for these does not work!
   fullDelay2Amp.gain(0.0);
@@ -438,8 +457,11 @@ void setup(void) {
   fullDelay3Mixer.gain(1, 1.0);  // full delay 3 temp mixer
   fullDelay4Mixer.gain(1, 1.0);  // full delay 4 temp mixer
   for (int i = 1; i < 4; i++) {
-    delaySelect.gain(i, 0.0);  // disable full delay i output sound
+    delaySelectNew.gain(i, 0.0);  // disable full delay i output sound
+    delaySelectOld.gain(i, 0.0);  // disable full delay i output sound
   }
+  delaySelectOld.gain(0, 0.0);
+  delaySelectOldRamp.amplitude(0.0);
 
   // Amplitude Ramping
   inRamp.amplitude(0.0);
@@ -596,10 +618,10 @@ void loop() {
   if (orientation == HOME) {
     if (rollState == LEFT_END_TRIGGER) {
       // Change Master Full Delay Loop
-      setActiveLoop((activeLoop + 3) % 4);
+      setActiveLoop((activeLoop + 3) % 4, activeLoop);
       // ping(500, 0.5);
     } else if (rollState == RIGHT_END_TRIGGER) {
-      setActiveLoop((activeLoop + 1) % 4);
+      setActiveLoop((activeLoop + 1) % 4, activeLoop);
       // ping(500, 0.5);
     }
   } else if (orientation == PLAYING) {
@@ -1263,7 +1285,7 @@ void loopRecordingCode() {
   // }
 }
 
-void setActiveLoop(int newLoopNum) {
+void setActiveLoop(int newLoopNum, int oldLoopNum) {
   // set inputs
   fullDelay1Amp.gain(newLoopNum == 0 ? 1.0 : 0.0);
   fullDelay2Amp.gain(newLoopNum == 1 ? 1.0 : 0.0);
@@ -1272,7 +1294,10 @@ void setActiveLoop(int newLoopNum) {
 
   // disable all loops
   for (int i = 0; i < 4; i++) {
-    delaySelect.gain(i, 0.0);
+    if (!(newLoopNum > -1 && newLoopNum < 4 && i == newLoopNum)) {
+      delaySelectNew.gain(i, 0.0);
+    };
+    delaySelectOld.gain(i, 0.0);
   }
 
   // return if mute desired
@@ -1282,7 +1307,12 @@ void setActiveLoop(int newLoopNum) {
   }
 
   // enable new loop
-  delaySelect.gain(newLoopNum, 1.0);
+  delaySelectOld.gain(oldLoopNum, 1.0);
+  delaySelectNewRamp.amplitude(0.0);
+  delaySelectOldRamp.amplitude(1.0);
+  delaySelectNew.gain(newLoopNum, 1.0);
+  delaySelectOldRamp.amplitude(0.0, 100);
+  delaySelectNewRamp.amplitude(1.0, 100);
   activeLoop = newLoopNum;
 }
 
