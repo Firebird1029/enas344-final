@@ -29,11 +29,15 @@ AudioControlSGTL5000 sgtl5000_1;  // xy=766,222
 int freqModAmt = 6;
 float ampPerSemiTone;
 
-int arp[] = {0, 7, 12, 19, 24, 31, 36, 43, 48};
+// int arp[] = {0, 7, 12, 19, 24, 31, 36, 43, 48};
 // int arp[] = {0, 6, 12, 18, 24, 30, 36, 42, 48};
 // int arp[] = {-12, -5, 0, 6, 12, 18, 24, 30, 36};
 // int arp[] = {0, 2, 4, 5, 7, 9, 11, 12, 14};
-int arp_length = 9;
+// int arp_length = 9;
+// int arp[] = {0, 7, 12, 19, 24, 31, 36, 43, 48, 43, 36, 31, 24, 19, 12, 7};
+// int arp_length = 16;
+int arp[] = {0, 7, 12, 19, 24, 31, 36, 31, 24, 19, 12, 7};
+int arp_length = 12;
 int arp_index = 0;
 
 int tempo = 100;

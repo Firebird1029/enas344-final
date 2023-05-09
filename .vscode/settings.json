@@ -1,0 +1,13 @@
+{
+	"[plaintext]": {
+		"editor.quickSuggestions": {
+			"other": "off",
+			"comments": "off",
+			"strings": "off"
+		}
+	},
+	"errorLens.exclude": [
+		"object of abstract class type \"AudioMixer4\" is not allowed",
+		"class \"AudioMixer4\" has no member \"gain\""
+	]
+}
