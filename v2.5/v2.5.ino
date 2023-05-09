@@ -616,11 +616,12 @@ void loop() {
 
   // SET LOOP OR OCTAVES
   if (orientation == HOME) {
-    if (rollState == LEFT_END_TRIGGER) {
+    if (rollState == LEFT_END_TRIGGER && recordingState == READY_FOR_RECORD) {
       // Change Master Full Delay Loop
       setActiveLoop((activeLoop + 3) % 4, activeLoop);
       // ping(500, 0.5);
-    } else if (rollState == RIGHT_END_TRIGGER) {
+    } else if (rollState == RIGHT_END_TRIGGER &&
+               recordingState == READY_FOR_RECORD) {
       setActiveLoop((activeLoop + 1) % 4, activeLoop);
       // ping(500, 0.5);
     }
