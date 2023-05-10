@@ -10,40 +10,54 @@
 #include <SerialFlash.h>
 #include <Wire.h>
 
+// Konrad's custom delay line code
 #include "effect_delayLoop.h"
-// TODO fix VS code errors
-// #include "mixer.h"
 
 // GENERAL
 
-#define LOOP_TIME 2400  // 1 measure @ 100 bpm (1 quarter note = 600 ms)
-#define MASTER_VOLUME 0.5
+// 1 measure @ 100 bpm (1 quarter note = 600 ms)
+// 1 measure = 4 quarter notes = 4 * 600 ms = 2400 ms
+#define LOOP_TIME 2400
 
-// menu encoder sensitivity (how many encoder steps per menu item)
+// 44100 samples/sec * 10 sec = 441000
+// 44100 samples/sec * 3 sec = 132300
+// should be as long/longer than LOOP_TIME
+#define DELAYLINE_MAX_LEN 132300
+
+#define MASTER_VOLUME 0.5  // <= 0.8 to prevent distortion
+
+// menu encoder sensitivity (how many encoder ticks to change to next menu item)
 #define MES 10
 
-#define BASE_FREQ 349.23  // F4
-#define CHIPTUNE_FREQ_MOD 6.0
-#define CHIPTUNE_AMP_PER_SEMITONE (1.f / (CHIPTUNE_FREQ_MOD * 12))
-#define DELAYLINE_MAX_LEN 132300  // (3 sec) 44100 samples/sec * 10 sec = 441000
-#define RIBBON_POT_CHECK_RATE 5   // lower rate = faster rate
+#define BASE_FREQ 349.23  // F4, default tonic
+// FUTURE: allow option to change tonic
 
+// lower value = faster rate; slower rate prevents value ramping issue
+#define RIBBON_POT_CHECK_RATE 5
+
+// default envelope values
 #define DEFAULT_ENV_ATTACK 10.5
 #define DEFAULT_ENV_HOLD 2.5
 #define DEFAULT_ENV_DECAY 35
 #define DEFAULT_ENV_SUSTAIN 0.8
 #define DEFAULT_ENV_RELEASE 300
 
+#define CHIPTUNE_FREQ_MOD 6.0
+#define CHIPTUNE_AMP_PER_SEMITONE (1.f / (CHIPTUNE_FREQ_MOD * 12))
+// Explanation: 1 octave has 12 semitones. If amplitude of DC object into FM is
+// 1.0, then pitch is 6 octaves higher. So, the amplitude of the DC object to
+// get 1 semitone higher should be the above.
+
 // PINOUT
 
 #define ENCODER_DT_PIN 3
-#define ENCODER_CLK_PIN 4
+#define ENCODER_CLK_PIN 4  // reverse DT & CLK for counterclockwise
 #define ENCODER_BTN_PIN 2
 #define RIBBON_POT_PIN_1 41  // A17
 #define RIBBON_POT_PIN_2 40  // A16
-#define LOOP_BTN_PIN 32
-#define COMMIT_BTN_PIN 31
-#define CLEAR_BTN_PIN 30
+// #define LOOP_BTN_PIN 32
+// #define COMMIT_BTN_PIN 31
+// #define CLEAR_BTN_PIN 30
 
 // OLED
 
@@ -55,6 +69,9 @@
 // MOTION
 
 #define MOTION_ALPHA 0.5  // 0 = acceleration, 1 = gyro, default: 0.995
+
+// use basic_readings_calib to determine IMU calibration values, otherwise
+// values will drift
 
 #define ACCELX_OFF 0.295
 #define ACCELY_OFF 0.08
@@ -79,12 +96,14 @@ EXTMEM int16_t DELAY_LINE_FULL_2[DELAYLINE_MAX_LEN] = {};
 EXTMEM int16_t DELAY_LINE_FULL_3[DELAYLINE_MAX_LEN] = {};
 EXTMEM int16_t DELAY_LINE_FULL_4[DELAYLINE_MAX_LEN] = {};
 
-// CUSTOM OVERRIDES
+// CUSTOM GUItool OVERRIDES
 AudioEffectdelayLoop tempDelay;   // xy=607,182
 AudioEffectdelayLoop fullDelay1;  // xy=868,201
 AudioEffectdelayLoop fullDelay2;  // xy=868,201
 AudioEffectdelayLoop fullDelay3;  // xy=868,201
 AudioEffectdelayLoop fullDelay4;  // xy=868,201
+
+// use pjrc.txt to get/store original (unformatted) GUItool auto-generated code
 
 // GUItool: begin automatically generated code
 AudioSynthWaveformDc chipDC;                // xy=55.5,583
@@ -214,8 +233,6 @@ AudioControlSGTL5000 sgtl5000_1;  // xy=64.5,20
 
 // BUTTONS
 // Button loopButton = Button();
-// Button synthButton = Button();
-// Button clearButton = Button();
 Button encButton = Button();
 
 // ENCODER
@@ -248,47 +265,43 @@ float yaw = 0;
 
 // GLOBAL - AUDIO
 
-enum RECORDING_STATE {
-  READY_FOR_RECORD,
-  RECORDING,
-  READY_FOR_COMMIT,
-  COMMITTING
-};
-RECORDING_STATE recordingState = READY_FOR_RECORD;
-
 int baseFreq = BASE_FREQ;
+int metronomeSpeed = 0;  // 0 = off, 1 = tick at quarter note rate, 2 = tick at
+                         // eighth note rate, 3 = tick at triplet rate, etc.
 
 const int majorScale[8] = {0, 2, 4, 5, 7, 9, 11, 12};
 const int minorScale[8] = {0, 2, 3, 5, 7, 8, 10, 12};
 const int pentatonicScale[6] = {0, 2, 4, 7, 9, 12};
 enum SCALE_TYPE { MAJOR, MINOR, PENTATONIC, CHROMATIC };
+// FUTURE: allow option to change scale type
 
-#define ARPEGGIO_COUNT 1
-#define ARPEGGIO_SPEED 50  // ms between arpeggio notes
-int ARPEGGIO_LENGTHS[ARPEGGIO_COUNT] = {12};
-int ARPEGGIO_1[] = {0, 7, 12, 19, 24, 31, 36, 31, 24, 19, 12, 7};
-int *ARPEGGIOS[ARPEGGIO_COUNT] = {ARPEGGIO_1};
-
-int currentArpeggio = 0, curArpNoteIdx = 0;
-long unsigned int nextArpNoteTime = 0;
-
-int metronomeSpeed = 0;  // 0 = off, 1 = tick at quarter note rate, 2 = tick at
-                         // eighth note rate, 3 = tick at triplet rate, etc.
-
+// percussion samples on SD card
 const char *SD_PERC[] = {"00_kick2.raw",      "01_snare.raw",
                          "02_tom_low.raw",    "04_tom_high.raw",
                          "05_hihat_open.raw", "06_hihat_closed.raw",
                          "07_rim.raw",        "08_shaker.raw"};
 
+// Chiptune
+#define ARPEGGIO_COUNT 1
+#define ARPEGGIO_SPEED 50  // ms between arpeggio notes
+int ARPEGGIO_LENGTHS[ARPEGGIO_COUNT] = {12};
+int ARPEGGIO_1[] = {0, 7, 12, 19, 24, 31, 36, 31, 24, 19, 12, 7};  // 5th + 8va
+int *ARPEGGIOS[ARPEGGIO_COUNT] = {ARPEGGIO_1};
+
+int currentArpeggio = 0, curArpNoteIdx = 0;
+long unsigned int nextArpNoteTime = 0;
+
 // GLOBAL - GENERAL
 
 elapsedMillis timer;  // master timer (auto-incrementing)
 
+// pitch changes orientation, roll changes rollState
 // home = OLED + encoder, playing = softpot, other = opposite of OLED + encoder
-enum ORIENTATION { HOME, PLAYING, OTHER };
+enum ORIENTATION { HOME, PLAYING, OTHER };  // pitch (towards/away) orientation
 ORIENTATION orientation = HOME;
 ORIENTATION lastOrientation = HOME;
-enum ROLL_STATE {
+
+enum ROLL_STATE {  // roll (sideways) orientation
   FLAT,
   LEFT,
   LEFT_START_TRIGGER,
@@ -300,7 +313,15 @@ enum ROLL_STATE {
 ROLL_STATE rollState = FLAT;
 ROLL_STATE lastRollState = FLAT;
 
-int activeLoop = 0;  // -1 = no loop active, 0-3 = loop index
+bool looperOn = false;  // true = loop automatically on playing position
+int activeLoop = 0;     // -1 = no loop active, 0-3 = loop index
+enum RECORDING_STATE {  // status of the delay line recording process
+  READY_FOR_RECORD,
+  RECORDING,
+  READY_FOR_COMMIT,
+  COMMITTING
+};
+RECORDING_STATE recordingState = READY_FOR_RECORD;
 
 long unsigned int lastCheckedRibbonPot = 0,  // last time ribbon pot was checked
     lastMetronomeTick = 0,                   // last time metronome ticked
@@ -331,6 +352,7 @@ enum MODE_STATE {
   MODE_CHORD,
   MODE_PERCUSSION
 };
+MODE_STATE currentSoundMode = MODE_SIMPLE;
 
 enum MENU_STATE {
   MENU_MODE,
@@ -339,12 +361,11 @@ enum MENU_STATE {
   MENU_METRONOME,
   MENU_LOOPER
 };
-enum MENU_ACTIVE { MENU_INACTIVE, MENU_ACTIVE_OPTION };
 MENU_STATE menuState = MENU_MODE;
+// on OLED, > = menu inactive, >> = menu active
+enum MENU_ACTIVE { MENU_INACTIVE, MENU_ACTIVE_OPTION };
 MENU_ACTIVE menuActiveState = MENU_INACTIVE;
 
-MODE_STATE currentSoundMode = MODE_SIMPLE;  // see MODE_OPTIONS
-bool looperOn = false;         // true = loop automatically on playing position
 int clientMasterVolume = 100,  // 0-100
     encValue,                  // current encoder value
     savedEncValueMenu,  // encValue of main menu (before entering active option)
@@ -416,6 +437,7 @@ void setup(void) {
   drumMixer.gain(3, 0.0);  // sd sample reader 3
 
   // Overlay Sounds (Metronome + Notification)
+  // notification plays sound effect when changing octave, discarding loop
   metronome.frequency(4000);
   metronome.length(50);
   metronome.secondMix(0.0);
@@ -443,8 +465,8 @@ void setup(void) {
   fullDelay1Amp.gain(1.0);       // enable full delay 1 by default
   delaySelectNew.gain(0, 1.0);   // enable full delay 1 by default
   delaySelectNewRamp.amplitude(1.0);
-  delayOutMixer.gain(0, 1.0);
-  delayOutMixer.gain(1, 1.0);
+  delayOutMixer.gain(0, 1.0);  // delaySelectNewRamp
+  delayOutMixer.gain(1, 1.0);  // delaySelectOldRamp
 
   // using a for loop for these does not work!
   fullDelay2Amp.gain(0.0);
@@ -460,10 +482,13 @@ void setup(void) {
     delaySelectNew.gain(i, 0.0);  // disable full delay i output sound
     delaySelectOld.gain(i, 0.0);  // disable full delay i output sound
   }
+  // disable full delay 1 as well because for loop goes from 1-4
   delaySelectOld.gain(0, 0.0);
   delaySelectOldRamp.amplitude(0.0);
 
   // Amplitude Ramping
+  // smoothes out waveform into delay line to prevent popping sound, but over
+  // time there will be a "dent" there in the full delay line
   inRamp.amplitude(0.0);
   fullRamp.amplitude(0.0);
 
@@ -473,10 +498,10 @@ void setup(void) {
                 0.0);  // full delay -- set to 0.0 to avoid initial random noise
   outMixer.gain(2,
                 0.0);  // temp delay -- set to 0.0 to avoid initial random noise
-  outMixer.gain(3, 1.0);  // overlay sounds
-  outLadderFreqSine.frequency(10);
+  outMixer.gain(3, 1.0);            // overlay sounds
+  outLadderFreqSine.frequency(10);  // unused
   outLadderFreqSine.amplitude(0);
-  outLadder.frequency(100000);
+  outLadder.frequency(100000);  // unused
   outLadder.octaveControl(6);
   outAmp.gain(1.0);
 
@@ -484,14 +509,6 @@ void setup(void) {
   // loopButton.attach(LOOP_BTN_PIN, INPUT_PULLUP);
   // loopButton.interval(5);
   // loopButton.setPressedState(LOW);
-
-  // synthButton.attach(COMMIT_BTN_PIN, INPUT_PULLUP);
-  // synthButton.interval(5);
-  // synthButton.setPressedState(LOW);
-
-  // clearButton.attach(CLEAR_BTN_PIN, INPUT_PULLUP);
-  // clearButton.interval(5);
-  // clearButton.setPressedState(LOW);
 
   // ENCODER SETUP
   encButton.attach(ENCODER_BTN_PIN, INPUT_PULLUP);
@@ -541,18 +558,20 @@ void setup(void) {
   fullDelay3.begin(DELAY_LINE_FULL_3, DELAYLINE_MAX_LEN);
   fullDelay4.begin(DELAY_LINE_FULL_4, DELAYLINE_MAX_LEN);
   tempDelay.delay(0, LOOP_TIME);   // must come after tempDelay.begin!
-  fullDelay1.delay(0, LOOP_TIME);  // must come after fullDelay.begin!
+  fullDelay1.delay(0, LOOP_TIME);  // must come after fullDelay1.begin!
   fullDelay2.delay(0, LOOP_TIME);  // etc.
   fullDelay3.delay(0, LOOP_TIME);
   fullDelay4.delay(0, LOOP_TIME);
 
   // clear delay lines -- avoid initial random noise
-  // TODO add double clear
-  tempDelay.clear();
-  fullDelay1.clear();
-  fullDelay2.clear();
-  fullDelay3.clear();
-  fullDelay4.clear();
+  // for loop (theoretically) helps ensure delay line is fully cleared
+  for (int i = 0; i < 3; i++) {
+    tempDelay.clear();
+    fullDelay1.clear();
+    fullDelay2.clear();
+    fullDelay3.clear();
+    fullDelay4.clear();
+  }
 
   Serial.println("Finished setup.");
   delay(100);
@@ -563,9 +582,6 @@ void loop() {
   // This comes first to determine orientation
   motionCode();
 
-  // ladder1.frequency(abs(pitch * 1000 + 500));
-  // outLadderFreqSine.amplitude(roll / 10);
-
   // MODE SELECTION
   // must come before RIBBON POT (PITCH) code!
   modeSelectionCode();
@@ -575,8 +591,6 @@ void loop() {
 
   // Read button data
   // loopButton.update();
-  // synthButton.update();
-  // clearButton.update();
 
   // LOOP RECORDING
   loopRecordingCode();
@@ -584,7 +598,9 @@ void loop() {
   // METRONOME
   metronomeCode();
 
-  // MENU OR SOUND EFFECTS
+  // MENU & SOUND EFFECTS
+  // encoder scrolls through menu in HOME orientation, and (in the future) goes
+  // through sound modulation options in PLAYING orientation
   encValue = enc.read();
   encButton.update();
 
@@ -618,6 +634,7 @@ void loop() {
   if (orientation == HOME) {
     if (rollState == LEFT_END_TRIGGER && recordingState == READY_FOR_RECORD) {
       // Change Master Full Delay Loop
+      // change loop only when finished committing
       setActiveLoop((activeLoop + 3) % 4, activeLoop);
       // ping(500, 0.5);
     } else if (rollState == RIGHT_END_TRIGGER &&
@@ -628,18 +645,19 @@ void loop() {
   } else if (orientation == PLAYING) {
     // Change Octaves
     if (rollState == LEFT_END_TRIGGER) {
-      baseFreq /= 2;
+      baseFreq /= 2;  // go down an octave
       ping(500, 0.6);
     } else if (rollState == RIGHT_END_TRIGGER) {
-      baseFreq *= 2;
+      baseFreq *= 2;  // go up an octave
       ping(500, 0.4);
     }
   }
 
-  // QUICK PERCUSSION
+  // FUTURE: QUICK PERCUSSION
+  // disabled because a light tap triggers high acceleration
   if (abs(accelz) > 19.0 && orientation == PLAYING) {
     // a shake up/down usually goes up to 19.0
-    // TODO change to change in accel
+    // FUTURE: change to change in acceleration
     // Serial.println(accelz);
     // drumSynth.noteOn();
     // if (!sdDrum1.isPlaying()) {
@@ -653,6 +671,7 @@ void loop() {
 // MOTION CODE
 
 void motionCode() {
+  // Professor Wilen's code
   sensors_event_t a, g, temp;
   mpu.getEvent(&a, &g, &temp);
 
@@ -675,18 +694,19 @@ void motionCode() {
   accelPitch = atan2(-accelx, sqrt(accely * accely + accelz * accelz));
   accelRoll = atan2(accely, sqrt(accelx * accelx + accelz * accelz));
 
-  pitch = MOTION_ALPHA * (pitch + pitchDot * 0.01) +
-          (1 - MOTION_ALPHA) * accelPitch;  // final pitch value
-  roll = -MOTION_ALPHA * (roll + rollDot * 0.01) -
-         (1 - MOTION_ALPHA) * accelRoll;  // final roll value
-
+  // final pitch value
   // pitch ranges from -1.5 to 1.5
+  pitch = MOTION_ALPHA * (pitch + pitchDot * 0.01) +
+          (1 - MOTION_ALPHA) * accelPitch;
+  // final roll value
   // roll ranges from -0.5 to 0.5
+  roll =
+      -MOTION_ALPHA * (roll + rollDot * 0.01) - (1 - MOTION_ALPHA) * accelRoll;
 
   // calculate roll state
   calculateRollState();
 
-  // only change orientation state based on pitch, if no roll
+  // change orientation state based on pitch, only if no roll
   if (abs(roll) < 0.1) {
     if (abs(pitch) < 0.3) {
       orientation = PLAYING;
@@ -709,7 +729,7 @@ void calculateRollState() {
       }
       break;
     case LEFT_START_TRIGGER:
-      // TODO (optional) add a delay to these 2 start triggers
+      // FUTURE: add a delay to these 2 start triggers
       if (roll > 0.4) {
         rollState = LEFT;
       } else {
@@ -742,36 +762,44 @@ void calculateRollState() {
 
 // RIBBON POT CODE
 const int minorSemiTonesUp[] = {3, 3, 4, 3, 3, 4, 4, 3};
+// e.g. in a minor scale, the 3rd is 3 semitones up from the 1st note, but 4
+// semitones up from the 3rd note
+// FUTURE: map semitones for major scale
 void ribbonPotCode() {
   // only check ribbon pot for updates as fast as RIBBON_POT_CHECK_RATE
   if (timer >= lastCheckedRibbonPot + RIBBON_POT_CHECK_RATE) {
     lastCheckedRibbonPot = timer;
 
     mappedRibbonPotVal = getRibbonPotValAndMap(0, 8);
+    // FUTURE change to (0, 6) for pentatonic scale, adjust accordingly
 
     if (mappedRibbonPotVal > -1) {
-      // ribbon pressed
+      // ribbon pressed if > -1
 
       // set frequencies in pitched modes
       if (currentSoundMode != MODE_PERCUSSION) {
-        int tempFix = mappedRibbonPotVal;
+        int origPotVal = mappedRibbonPotVal;
+
+        // FUTURE: allow option to change scale type
         mappedRibbonPotVal = mapScale(MINOR, mappedRibbonPotVal);
 
+        // set frequencies for each oscillator in every sound mode
+        // (but only output the currently active mode)
         inWaveformMod.frequency(baseFreq * pow(2, mappedRibbonPotVal / 12.0));
         chipWave.frequency(baseFreq * pow(2, mappedRibbonPotVal / 12.0));
-        // TODO FIX SET TO SEMITONES
-        // chord2wave.frequency(baseFreq *
-        //                      pow(2, (mappedRibbonPotVal + 3) / 12.0));
 
+        // 2nd note of triad depends on scale degree in diatonic scales
         chord2wave.frequency(
             baseFreq *
-            pow(2, (mappedRibbonPotVal + minorSemiTonesUp[tempFix]) / 12.0));
+            pow(2, (mappedRibbonPotVal + minorSemiTonesUp[origPotVal]) / 12.0));
+
+        // 3rd note of triad is always 5th above
         chord3wave.frequency(baseFreq *
                              pow(2, (mappedRibbonPotVal + 7) / 12.0));
       }
 
       if (curSustainStatus) {
-        // sustain note
+        // sustain note, do nothing
       } else {
         // note on
         inEnvelope.noteOn();
@@ -787,7 +815,6 @@ void ribbonPotCode() {
         curSustainStatus = true;
       }
     } else {
-      // inWaveformMod.amplitude(0);
       if (curSustainStatus) {
         // note off
         inEnvelope.noteOff();
@@ -809,18 +836,20 @@ void ribbonPotCode() {
  * newMin and newMax
  */
 int getRibbonPotValAndMap(int newMin, int newMax) {
-  float a1 = analogRead(RIBBON_POT_PIN_1);  // sensorValue2
-  float a2 = analogRead(RIBBON_POT_PIN_2);  // sensorValue1
+  float a1 = analogRead(RIBBON_POT_PIN_1);
+  float a2 = analogRead(RIBBON_POT_PIN_2);
 
   if (a1 < 10 || a2 < 10) {
-    return -1;
+    return -1;  // ribbon pot not pressed
   }
 
-  // calibrate by measuring actual resistance of 10k resistor (e.g. 9.93 or 9.8)
+  // calibrate by measuring actual resistance of 10k resistor
+  // (e.g. 9.78 or 9.81)
   float x = ((1023 / (float)a1) - 1) * (10 / 9.78);
   float y = ((1023 / (float)a2) - 1) * (10 / 9.81);
 
   float pos = (x + (1 - y)) / 2;  // normalized position (from 0.0 to 1.0)
+
   pos = (newMax - newMin) * pos + newMin;  // mapped position
 
   // clip position
@@ -857,8 +886,7 @@ void mapPercussion(int sampleNum) {
   }
 
   // ! using more than one sd read is buggy so sdDrum2 and sdDrum3 are unused
-
-  // TODO switch to drumSynth instead of sdDrum1
+  // FUTURE: add drumSynth along with sdDrum1
 
   switch (sampleNum) {
     case 0:
@@ -888,7 +916,9 @@ void mapPercussion(int sampleNum) {
   }
 
   // 3 different SD read objects to enable percussive polyphony
+
   // doesn't work :(
+
   // if (!sdDrum1.isPlaying()) {
   //   sdDrum1.play(SD_PERC[mappedRibbonPotVal]);
   // } else if (!sdDrum2.isPlaying()) {
@@ -903,6 +933,8 @@ void mapPercussion(int sampleNum) {
 
 void chiptuneCode() {
   if (timer >= nextArpNoteTime + ARPEGGIO_SPEED) {
+    nextArpNoteTime = timer;
+
     chipDC.amplitude(
         ARPEGGIOS[currentArpeggio][curArpNoteIdx] * CHIPTUNE_AMP_PER_SEMITONE,
         0);
@@ -910,7 +942,6 @@ void chiptuneCode() {
     if (curArpNoteIdx >= ARPEGGIO_LENGTHS[currentArpeggio]) {
       curArpNoteIdx = 0;
     }
-    nextArpNoteTime = timer;
   }
 }
 
@@ -919,18 +950,16 @@ void chiptuneCode() {
 void metronomeCode() {
   if (metronomeSpeed > 0) {
     if (timer >= lastMetronomeTick + (LOOP_TIME / (metronomeSpeed * 4))) {
-      if (timer >=
+      if (timer <
           (lastMetronomeTick + 2 * (LOOP_TIME / (metronomeSpeed * 4)))) {
-        lastMetronomeTick = timer;
-      } else {
+        // reduces metronome drift by ignoring drift of most recent tick
         lastMetronomeTick =
             lastMetronomeTick + (LOOP_TIME / (metronomeSpeed * 4));
+      } else {
+        // however, if metronome has been turned off, then start metronome
+        // from current time
+        lastMetronomeTick = timer;
       }
-
-      // theoretically reduces metronome drift,
-      // but doesn't work if metronome can be turned off
-      // lastMetronomeTick = lastMetronomeTick + (LOOP_TIME / (metronomeSpeed *
-      // 4));
 
       metronome.noteOn();
     }
@@ -944,8 +973,6 @@ void modeSelectionCode() {
   for (int i = 0; i < 4; i++) {
     modeSelect.gain(i, 0.0);
   }
-
-  inMixer.gain(1, 1.0);  // enable quick percussion
 
   // Simple
   if (currentSoundMode == MODE_SIMPLE) {
@@ -985,6 +1012,8 @@ void modeSelectionCode() {
   if (currentSoundMode == MODE_PERCUSSION) {
     inMixer.gain(1, 0.0);  // disable quick percussion
     modeSelect.gain(3, 1.0);
+  } else {
+    inMixer.gain(1, 1.0);  // enable quick percussion
   }
 }
 
@@ -994,7 +1023,7 @@ void menuCode() {
   // Encoder: Menu Navigation
   if (menuActiveState == MENU_INACTIVE) {
     // encoder toggles through menu options
-    // TODO switch to programmatic way (non if statements)
+    // FUTURE: use dynamic code instead of if statements
     if (encValue >= 0 && encValue < MES) {
       menuState = MENU_METRONOME;
     } else if (encValue >= MES && encValue < 2 * MES) {
@@ -1006,7 +1035,7 @@ void menuCode() {
     } else if (encValue >= 4 * MES && encValue < 5 * MES) {
       menuState = MENU_VOLUME;
     } else if (encValue < 0) {
-      // TODO switch to programmatic way
+      // FUTURE: calculate automatically instead of hard-coding
       enc.write(49);
     } else {
       enc.write(0);
@@ -1014,6 +1043,7 @@ void menuCode() {
   } else if (menuActiveState == MENU_ACTIVE_OPTION) {
     if (menuState == MENU_MODE) {
       // encoder toggles through mode options
+      // FUTURE: remove warning by re-writing code
       if (encValue >= MES) {
         currentSoundMode =
             (MODE_STATE)(currentSoundMode + 1) % NUM_MODE_OPTIONS;
@@ -1025,6 +1055,7 @@ void menuCode() {
         enc.write(0);
       }
     } else if (menuState == MENU_LOOPER) {
+      // encoder toggles looper on/off
       if (encValue >= MES || encValue <= -MES) {
         looperOn = !looperOn;
         enc.write(0);
@@ -1063,27 +1094,32 @@ void menuCode() {
       // special exceptions, substate-less menu options
       if (menuState == MENU_CLEAR) {
         if (menuState == MENU_CLEAR) {
-          // clear loops -- TODO add double clear
-          tempDelay.clear();
-          tempDelay.clear();
+          // for loop reduces chance of uncleared clicks/pops
+          for (int i = 0; i < 3; i++) {
+            // clear temp delay loop
+            tempDelay.clear();
 
-          switch (activeLoop) {
-            case 0:
-              fullDelay1.clear();
-              break;
-            case 1:
-              fullDelay2.clear();
-              break;
-            case 2:
-              fullDelay3.clear();
-              break;
-            case 3:
-              fullDelay4.clear();
-              break;
+            // clear full delay loop
+            switch (activeLoop) {
+              case 0:
+                fullDelay1.clear();
+                break;
+              case 1:
+                fullDelay2.clear();
+                break;
+              case 2:
+                fullDelay3.clear();
+                break;
+              case 3:
+                fullDelay4.clear();
+                break;
+            }
           }
         }
 
       } else {
+        // menu options with substate
+
         savedEncValueMenu = encValue;
         menuActiveState = MENU_ACTIVE_OPTION;
 
@@ -1092,6 +1128,7 @@ void menuCode() {
 
         // special exceptions
         if (menuState == MENU_METRONOME) {
+          // set encoder value to current metronome speed
           enc.write(MES * metronomeSpeed);
         }
       }
@@ -1149,6 +1186,9 @@ void menuCode() {
 }
 
 void displayMenuPrefix(int ms) {
+  // on OLED, > = menu option is selected but inactive,
+  // >> = menu option is selected and active
+
   if (menuState == ms) {
     display.print(">");
   } else {
@@ -1165,13 +1205,13 @@ void displayMenuPrefix(int ms) {
 // SOUNDS EFFECTS CODE
 
 void soundEffectsCode() {
-  // TODO
+  // FUTURE
   // VIBRATO
-  // Serial.println(pitch);
   // inWaveformFM.amplitude(mapFloat(abs(roll), 0, 0.5, 0, 0.1));
 }
 
 // LOOP RECORDING CODE
+
 void loopRecordingCode() {
   // START RECORDING
   if (recordingState == READY_FOR_RECORD) {
@@ -1179,17 +1219,15 @@ void loopRecordingCode() {
     // middle of committing a loop
     if (orientation == PLAYING && looperOn) {
       Serial.println("STARTING LOOP RECORDING");
+
       // send the synth signal into the delay loop
       tempDelayMixer.gain(1, 1.0);
       inRamp.amplitude(1.0, 50);
 
-      // comment this line if you don't want to clear the loop when you record
-      // new material
-      // tempDelayMixer.gain(0, 0.0);
-      tempDelayMixer.gain(0, 1.0);
+      // tempDelayMixer.gain(0, 0.0); // prevent loop feedback!
+      tempDelayMixer.gain(0, 1.0);  // allow loop feedback (don't clear loop)!
 
-      // outMixer.gain(2, 0.0);  // disable temp delay
-      outMixer.gain(2, 1.0);  // enable temp delay
+      outMixer.gain(2, 1.0);  // enable temp delay output
 
       tempRecordingStart = timer;
 
@@ -1197,6 +1235,11 @@ void loopRecordingCode() {
       recordingState = READY_FOR_COMMIT;
     }
   }
+
+  // previously, there was an intermediate recording state that would end after
+  // LOOP_TIME which would then automatically move to READY_FOR_COMMIT, and at
+  // READY_FOR_COMMIT, the user needed to hit a "commit" physical button to
+  // start the commit process
 
   // FINISH RECORDING
   /* else if (recordingState == RECORDING) {
@@ -1209,7 +1252,7 @@ void loopRecordingCode() {
       // resets the feedback to 1.0 so the loop repeats indefinitely
       tempDelayMixer.gain(0, 1.0);
 
-      outMixer.gain(2, 1.0);  // enable temp delay
+      outMixer.gain(2, 1.0);  // enable temp delay output
       recordingState = READY_FOR_COMMIT;
     }
   } */
@@ -1219,38 +1262,41 @@ void loopRecordingCode() {
     if (orientation == HOME) {
       Serial.println("SAVE pitch detected, committing recording");
 
-      // FROM FINISH RECORDING
+      // if you want to restore RECORDING stage, then remove this code
+
+      // -- FROM FINISH RECORDING STAGE --
 
       // turn off the signal into the delay loop
       // tempDelayMixer.gain(1, 0.0);
-      inRamp.amplitude(0.0, 50);
+      inRamp.amplitude(0.0, 50);  // turn off signal via ramp, not gate
 
       // resets the feedback to 1.0 so the loop repeats indefinitely
       // tempDelayMixer.gain(0, 1.0); // already on
 
-      outMixer.gain(2, 1.0);  // enable temp delay
+      outMixer.gain(2, 1.0);  // enable temp delay output
 
-      // END FROM FINISH RECORDING
+      // -- END FROM FINISH RECORDING STAGE --
 
       // enable temp delay signal into full delay
       // fullDelay1Mixer.gain(1, 1.0);
-      fullRamp.amplitude(1.0, 50);
+      fullRamp.amplitude(1.0, 50);  // turn on signal via ramp, not gate
 
       commitRecordingStart = timer;
+
       recordingState = COMMITTING;
     } else if (orientation == OTHER) {
       Serial.println("DISCARD pitch detected");
 
-      // unnecessary because you have to orient back to playing position anyway
       // turn off the signal into the delay loop
+      // (unnecessary since you have to orient back to PLAYING position anyway)
       // tempDelayMixer.gain(1, 0.0);
       // inRamp.amplitude(0.0, 50);
 
-      // TODO add double clear
-      tempDelay.clear();
-      tempDelay.clear();
+      for (int i = 0; i < 3; i++) {
+        tempDelay.clear();
+      }
 
-      ping(500, 1.0);
+      ping(500, 1.0);  // play notification (sound effect)
 
       recordingState = READY_FOR_RECORD;
     }
@@ -1265,41 +1311,36 @@ void loopRecordingCode() {
 
       // disable temp delay signal into full delay
       // fullDelayMixer.gain(1, 0.0);
-      fullRamp.amplitude(0.0, 50);
+      fullRamp.amplitude(0.0, 50);  // turn off signal via ramp, not gate
 
       // disable temp delay signal feedback
       tempDelayMixer.gain(0, 0.0);
 
       // clear temp delay (optional)
-      tempDelay.clear();
+      for (int i = 0; i < 3; i++) {
+        tempDelay.clear();
+      }
 
       // resets the feedback to 1.0 so the loop repeats indefinitely
       // fullDelayMixer.gain(0, 1.0); // already always 1.0 for full delay!
 
-      outMixer.gain(1, 1.0);  // enable full delay
+      outMixer.gain(1, 1.0);  // enable full delay output
 
       // ping(800, 0.3);
 
       recordingState = READY_FOR_RECORD;
     }
   }
-
-  // CLEAR FULL DELAY
-  // if (clearButton.pressed() && !isCommittingLoop) {
-  //   Serial.println("Clear button pressed");
-  //   // clear the loop
-  //   fullDelay.clear();
-  // }
 }
 
 void setActiveLoop(int newLoopNum, int oldLoopNum) {
-  // set inputs
+  // set inputs into delay line systems
   fullDelay1Amp.gain(newLoopNum == 0 ? 1.0 : 0.0);
   fullDelay2Amp.gain(newLoopNum == 1 ? 1.0 : 0.0);
   fullDelay3Amp.gain(newLoopNum == 2 ? 1.0 : 0.0);
   fullDelay4Amp.gain(newLoopNum == 3 ? 1.0 : 0.0);
 
-  // disable all loops
+  // disable output of all loops
   for (int i = 0; i < 4; i++) {
     if (!(newLoopNum > -1 && newLoopNum < 4 && i == newLoopNum)) {
       delaySelectNew.gain(i, 0.0);
@@ -1313,13 +1354,14 @@ void setActiveLoop(int newLoopNum, int oldLoopNum) {
     return;
   }
 
-  // enable new loop
+  // enable output of new loop ramping up, as well as old loop ramping down
   delaySelectOld.gain(oldLoopNum, 1.0);
   delaySelectNewRamp.amplitude(0.0);
   delaySelectOldRamp.amplitude(1.0);
   delaySelectNew.gain(newLoopNum, 1.0);
   delaySelectOldRamp.amplitude(0.0, 100);
   delaySelectNewRamp.amplitude(1.0, 100);
+
   activeLoop = newLoopNum;
 }
 
@@ -1334,6 +1376,7 @@ float mapFloat(float x, float in_min, float in_max, float out_min,
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
+// play an audible sound effect as a "notification" for various events
 void ping(float freq, float mod) {
   notification.frequency(freq);
   notification.pitchMod(mod);
